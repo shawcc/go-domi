@@ -6,17 +6,18 @@ import {
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
   Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
-  Puzzle, BookOpen, Star, Gift, Coffee, Dumbbell // 新增图标
+  Puzzle, BookOpen, Star, Gift, Sliders
 } from 'lucide-react';
 
 // ==========================================
-// --- 0. 全局样式 ---
+// --- 0. 全局样式修复 (含动画定义) ---
 // ==========================================
 const GlobalStyles = () => (
   <style>{`
     html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; max-width: none !important; overflow-x: hidden; font-family: system-ui, -apple-system, sans-serif; }
     ::-webkit-scrollbar { width: 0px; background: transparent; }
     
+    /* 卡片光效 */
     @keyframes shine {
       0% { transform: translateX(-100%) rotate(45deg); }
       100% { transform: translateX(200%) rotate(45deg); }
@@ -28,13 +29,59 @@ const GlobalStyles = () => (
       transform: translateX(-100%) rotate(45deg);
       animation: shine 3s infinite;
     }
+
+    /* 警报条纹移动 */
+    @keyframes move-stripes {
+      0% { background-position: 0 0; }
+      100% { background-position: 50px 50px; }
+    }
+    .hazard-stripes {
+      background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px);
+      background-size: 50px 50px;
+      animation: move-stripes 2s linear infinite;
+    }
+    
+    /* 红色扫描线 */
+    @keyframes scan {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
+    }
+    .scan-line {
+      background: linear-gradient(to bottom, transparent, rgba(239, 68, 68, 0.5), transparent);
+      animation: scan 3s linear infinite;
+    }
+
+    /* 流星划过 */
+    @keyframes shooting-star {
+      0% { transform: translateX(0) translateY(0) rotate(45deg); opacity: 1; }
+      100% { transform: translateX(-500px) translateY(500px) rotate(45deg); opacity: 0; }
+    }
+    .shooting-star {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.1), 0 0 0 8px rgba(255,255,255,0.1), 0 0 20px rgba(255,255,255,1);
+      animation: shooting-star 5s linear infinite;
+    }
+    .shooting-star::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      right: 0;
+      width: 200px;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(255,255,255,0.8));
+    }
   `}</style>
 );
 
 // ==========================================
 // --- 1. 核心引擎：本地数据库 (LocalStorage) ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_local_v10_visuals';
+const STORAGE_KEY = 'go_domi_local_v11_fix_assets';
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
@@ -82,33 +129,39 @@ const LocalDB = {
 };
 
 // ==========================================
-// --- 2. 游戏化与资源配置 ---
+// --- 2. 智能资源与音效引擎 ---
 // ==========================================
+
+// 系统音效配置
+const SOUND_EFFECTS = {
+  alert: { local: '/assets/audio/alert.mp3', fallback: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3' },
+  success: { local: '/assets/audio/success.mp3', fallback: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3' },
+  patrol: { local: '/assets/audio/patrol.mp3', fallback: 'https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3' },
+  levelup: { local: '/assets/audio/levelup.mp3', fallback: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3' }
+};
+
+const playSystemSound = (type) => {
+  const config = SOUND_EFFECTS[type];
+  if (!config) return;
+  const audio = new Audio(config.local);
+  audio.play().catch(() => {
+    const fallbackAudio = new Audio(config.fallback);
+    fallbackAudio.volume = 0.4; 
+    fallbackAudio.play().catch(() => {});
+  });
+};
+
 const PUZZLE_CONFIG = {
   totalPieces: 9, 
   image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80", 
 };
 
-// 预置词库 (英语)
 const SYSTEM_DICTIONARY = {
   'cat': { cn: '猫', img: '/assets/images/cat.jpg' }, 'dog': { cn: '狗', img: '/assets/images/dog.jpg' }, 
   'apple': { cn: '苹果', img: '/assets/images/apple.jpg' }, 'banana': { cn: '香蕉', img: '/assets/images/banana.jpg' }, 
   'head': { cn: '头', img: '/assets/images/head.jpg' }, 
 };
 
-// 预置任务模板 (生活/运动 - 带图!)
-const TASK_TEMPLATES = {
-  sport: [
-    { title: "原地高抬腿 20 次", reward: 15, type: 'sport', image: 'https://image.pollinations.ai/prompt/cartoon kid doing high knees exercise, minimalist vector, white background?width=400&height=300&nologo=true' },
-    { title: "开合跳 15 次", reward: 15, type: 'sport', image: 'https://image.pollinations.ai/prompt/cartoon kid doing jumping jacks, minimalist vector, white background?width=400&height=300&nologo=true' },
-  ],
-  life: [
-    { title: "喝一杯温水", reward: 5, type: 'life', image: 'https://image.pollinations.ai/prompt/cartoon glass of water, minimalist vector, white background?width=400&height=300&nologo=true' },
-    { title: "整理自己的玩具", reward: 25, type: 'life', image: 'https://image.pollinations.ai/prompt/cartoon tidying up toys box, minimalist vector, white background?width=400&height=300&nologo=true' },
-  ]
-};
-
-// 英语单词资源补全
 const enrichWordTask = (wordInput) => {
   const word = wordInput.trim();
   const lowerWord = word.toLowerCase();
@@ -146,6 +199,7 @@ const CRYSTAL_STAGES = [
 ];
 
 const REVIEW_INTERVALS = [0, 1, 2, 4, 7, 15, 30]; 
+const MAX_DAILY_TASKS = 10; 
 
 // --- Utilities ---
 const getBeijingTime = () => {
@@ -218,6 +272,7 @@ const LoadingScreen = () => (
   <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-4">
     <div className="animate-bounce text-6xl mb-4">🚀</div>
     <h1 className="text-2xl font-bold animate-pulse">正在连接宇宙基地...</h1>
+    <p className="text-slate-400 mt-2">系统初始化中</p>
   </div>
 );
 
@@ -228,6 +283,9 @@ const DynamicBackground = ({ themeId, customBg }) => {
       <div className="absolute inset-0 z-0">
         <img src={customBg} alt="background" className="w-full h-full object-cover" onError={() => setBgError(true)} />
         <div className="absolute inset-0 bg-black/40"></div>
+        {/* 叠加流星效果 */}
+        <div className="absolute top-10 right-10 shooting-star"></div>
+        <div className="absolute top-1/3 left-20 shooting-star" style={{animationDelay: '3s'}}></div>
       </div>
     );
   }
@@ -238,14 +296,14 @@ const DynamicBackground = ({ themeId, customBg }) => {
         <div key={i} className="absolute w-0.5 h-0.5 bg-white rounded-full animate-pulse"
              style={{left: `${Math.random()*100}%`, top: `${Math.random()*100}%`, animationDelay: `${Math.random()*3}s`, opacity: Math.random()}}></div>
       ))}
+      <div className="absolute top-10 right-10 shooting-star"></div>
     </div>
   );
 };
 
 const RewardModal = ({ rewards, onClose }) => {
   useEffect(() => {
-    const audio = new Audio('/assets/audio/success.mp3'); 
-    audio.play().catch(() => {});
+    playSystemSound('success');
     speak("任务完成！获得奖励！");
   }, []);
 
@@ -347,22 +405,30 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
   const task = tasks[0]; 
   const isProcessing = processingTasks.has(task.id);
   const isEnglish = task.type === 'english';
-  // 提取图片：优先 flashcardData，其次 task.image (通用任务)
+  // 提取图片
   const taskImage = isEnglish ? task.flashcardData?.image : (task.image || task.flashcardData?.image);
   const displayTitle = isEnglish ? "英语挑战" : task.title;
 
   useEffect(() => {
     const timer = setTimeout(() => {
+        playSystemSound('alert'); // 播放警报音效
         const intro = isEnglish ? "英语挑战时间！" : "紧急任务！";
         const content = isEnglish ? "请完成一个单词练习" : task.title;
-        speak(`${intro} ${content}`);
-    }, 500);
+        setTimeout(() => speak(`${intro} ${content}`), 1000);
+    }, 300);
     return () => clearTimeout(timer);
   }, [task.id, task.title, task.type]);
 
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-       <div className={`w-full max-w-lg ${currentTheme.card} rounded-3xl border-4 border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.6)] overflow-hidden relative animate-in zoom-in-95 duration-300`}>
+       
+       {/* 背景特效：红色警戒 */}
+       <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-red-900/20 to-transparent animate-[scan_3s_linear_infinite] transform -translate-y-full scan-line"></div>
+          <div className="absolute inset-0 hazard-stripes"></div>
+       </div>
+
+       <div className={`w-full max-w-lg ${currentTheme.card} rounded-3xl border-4 border-red-500 shadow-[0_0_80px_rgba(239,68,68,0.6)] overflow-hidden relative animate-in zoom-in-95 duration-300`}>
           <div className="bg-red-500 text-white p-4 flex items-center justify-center gap-3 animate-pulse">
             <Siren size={28} className="animate-bounce" />
             <h2 className="text-xl font-black uppercase tracking-wider">紧急任务警报</h2>
@@ -370,17 +436,19 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
           </div>
           <div className="p-8 flex flex-col items-center text-center">
             
-            {/* 图标展示区 (Visual Cue) */}
-            <div className="mb-6 relative w-48 h-48 rounded-2xl bg-white/10 border-2 border-white/20 flex items-center justify-center overflow-hidden shadow-lg">
+            {/* 任务展示区：优先图片，无图则显示图标 */}
+            <div className="mb-6 relative w-48 h-48 rounded-2xl bg-white/10 border-2 border-white/20 flex items-center justify-center overflow-hidden shadow-lg group">
                 {taskImage ? (
-                  <img src={taskImage} alt="Task Icon" className="w-full h-full object-cover" onError={(e) => {e.target.style.display='none'}} />
+                  <img src={taskImage} alt="Task Icon" className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onError={(e) => {e.target.style.display='none'}} />
                 ) : (
-                  <div className="text-6xl">{isEnglish ? "A" : "⚔️"}</div>
+                  <div className="text-6xl animate-bounce">{isEnglish ? "A" : "⚔️"}</div>
                 )}
             </div>
 
             <div className="space-y-2 mb-8">
-               <div className="text-blue-300 font-bold uppercase tracking-widest text-xs">{task.category || task.type}</div>
+               <div className="flex items-center justify-center gap-2 text-blue-300 text-xs font-bold uppercase tracking-widest animate-pulse">
+                   来自 {currentTheme.assistant} 的信号...
+               </div>
                <h1 className="text-3xl font-bold text-white leading-tight flex flex-col items-center gap-2">
                  {displayTitle}
                </h1>
@@ -414,7 +482,6 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} transition-colors duration-500 relative overflow-hidden flex flex-col`}>
       <DynamicBackground themeId={currentTheme.id} customBg={currentTheme.backgroundImage} />
       
-      {/* 巡逻动画 */}
       {isPatrolling && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
            <div className="relative w-[300px] h-[300px]"><div className="absolute inset-0 border-4 border-green-500/50 rounded-full bg-green-900/20 shadow-[0_0_50px_rgba(34,197,94,0.3)] animate-ping"></div><div className="absolute inset-0 border border-green-500/30 rounded-full scale-50"></div><div className="absolute top-0 bottom-0 left-1/2 w-[1px] bg-green-500/30"></div><div className="absolute left-0 right-0 top-1/2 h-[1px] bg-green-500/30"></div><div className="absolute top-1/2 left-1/2 w-[150px] h-[150px] bg-gradient-to-r from-transparent to-green-500/50 origin-top-left animate-[spin_2s_linear_infinite] rounded-br-full"></div></div><div className="mt-8 text-green-400 font-mono text-2xl font-black tracking-widest animate-pulse">SCANNING SECTOR...</div>
@@ -432,6 +499,9 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
             <div className="flex items-center gap-2">
                <span className="text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded">Lv.{userProfile.level}</span>
                <div className="flex items-center gap-1 text-orange-400 text-xs font-bold animate-pulse"><Flame size={12} fill="currentColor" /> {streakDays}天连胜</div>
+               <div className="flex items-center gap-1 text-purple-300 text-xs font-bold border border-purple-500/30 px-2 py-0.5 rounded bg-purple-900/30">
+                  <Gem size={10} /> {userProfile.fragments || 0}
+               </div>
             </div>
           </div>
         </div>
@@ -617,16 +687,11 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
     setMathAns('');
   };
 
-  // 点击“我去教爷爷奶奶” -> 直接进入验证模式
-  const handleGoTeach = () => {
-    setStep('challenge');
-    generateMath();
-  };
-
   // 验证乘法
   const checkMath = () => {
     if (parseInt(mathAns) === mathQ.a * mathQ.b) {
        setStep('success');
+       playSystemSound('success');
        speak("太棒了！任务完成！");
        setTimeout(() => onComplete(task), 2000);
     } else {
@@ -644,11 +709,23 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
         <div className="w-full h-64 bg-slate-100 relative flex items-center justify-center overflow-hidden">
            {imageError ? (
              <div className="flex flex-col items-center justify-center w-full h-full bg-slate-200">
-                <img src={`https://source.unsplash.com/400x300/?${word}`} alt={word} className="w-full h-full object-cover opacity-80" onError={(e) => { e.target.style.display='none'; }} />
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><span className="bg-black/50 text-white px-2 py-1 rounded text-xs">本地图片未找到</span></div>
+                <img 
+                  src={`https://source.unsplash.com/400x300/?${word}`} 
+                  alt={word} 
+                  className="w-full h-full object-cover opacity-80"
+                  onError={(e) => { e.target.style.display='none'; }} 
+                />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="bg-black/50 text-white px-2 py-1 rounded text-xs">本地图片未找到</span>
+                </div>
              </div>
            ) : (
-             <img src={imageUrl} alt={word} className="w-full h-full object-cover" onError={() => setImageError(true)} />
+             <img 
+               src={imageUrl} 
+               alt={word} 
+               className="w-full h-full object-cover" 
+               onError={() => setImageError(true)}
+             />
            )}
            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
               <div className="text-white font-bold text-lg opacity-80 flex items-center gap-2"><ImageIcon size={16}/> 英语卡片</div>
@@ -678,20 +755,29 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
 
                {/* 播放按钮 */}
                <button onClick={playWord} className="inline-flex items-center gap-2 text-blue-500 hover:text-blue-700 font-bold bg-blue-50 px-6 py-3 rounded-full border border-blue-100 shadow-sm active:scale-95 transition-all">
-                  {audioUrl ? <Headphones size={24} /> : <Volume2 size={24} />} {audioUrl ? "播放原声" : "听发音"}
+                  {audioUrl ? <Headphones size={24} /> : <Volume2 size={24} />} 
+                  {audioUrl ? "播放原声" : "听发音"}
                </button>
 
                <div className="border-t border-slate-100 pt-6 mt-6">
                  {step === 'learning' ? (
-                   <button onClick={handleGoTeach} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-xl hover:bg-blue-500 transition-colors active:scale-95 shadow-lg shadow-blue-200">我去教爷爷奶奶</button>
+                   <button 
+                     onClick={() => {
+                       setStep('challenge');
+                       generateMath();
+                     }}
+                     className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-xl hover:bg-blue-500 transition-colors active:scale-95 shadow-lg shadow-blue-200"
+                   >
+                     我去教爷爷奶奶
+                   </button>
                  ) : (
                    <div className="space-y-4 animate-in fade-in">
                      <div className="p-4 bg-yellow-50 rounded-xl border-2 border-yellow-200 text-yellow-800 text-left">
                         <div className="flex items-center gap-2 font-bold text-lg mb-1"><Users size={20} /> 任务目标</div>
-                        <p className="text-sm opacity-90">请找到家长，教他/她读出这个单词，并请求家长完成下方验证。</p>
+                        <p className="text-sm opacity-90">请教会爷爷奶奶读这个单词，并请他们完成下方验证。</p>
                      </div>
                      
-                     {/* 极简乘法验证区域：直接显示在卡片下方 */}
+                     {/* 极简乘法验证区域 */}
                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                         <div className="flex items-center justify-between gap-2">
                            <span className="font-mono font-black text-xl text-slate-700">{mathQ.a} × {mathQ.b} = </span>
@@ -768,6 +854,7 @@ export default function App() {
            });
            return d;
         });
+        playSystemSound('alert');
         speak("叮咚！任务时间到！");
       }
     }, 10000); 
@@ -792,7 +879,9 @@ export default function App() {
   const handleUpdateProfile = (d) => LocalDB.update(s => { s.user = { ...s.user, ...d }; return s; });
 
   const handleStartPatrol = () => {
-    setIsPatrolling(true); speak("雷达启动！");
+    setIsPatrolling(true); 
+    playSystemSound('patrol');
+    speak("雷达启动！");
     setTimeout(() => {
        const activeLibIds = new Set(data.tasks.filter(t => t.status === 'pending').map(t => t.libraryId));
        // 1. Sort by nextReview (Plan Priority)
@@ -803,6 +892,7 @@ export default function App() {
        LocalDB.update(d => {
          if (candidate) {
            d.tasks.push({ ...candidate, id: generateId(), status: 'pending', createdAt: Date.now(), libraryId: candidate.id, source: 'patrol' });
+           playSystemSound('alert');
            speak("发现计划任务！");
          } else {
            // Fallback random
@@ -820,6 +910,7 @@ export default function App() {
               createdAt: Date.now(),
               source: 'patrol_random'
            });
+           playSystemSound('alert');
            speak("发现随机单词！");
          }
          return d;
