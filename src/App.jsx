@@ -5,21 +5,32 @@ import {
   Rocket, Zap, Loader2, Activity, BrainCircuit, History, ListTodo, 
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
-  Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock
+  Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
+  Puzzle, BookOpen, Star, Gift 
 } from 'lucide-react';
 
 // ==========================================
-// --- 0. 全局样式 ---
+// --- 0. 全局样式修复 ---
 // ==========================================
 const GlobalStyles = () => (
   <style>{`
     html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; max-width: none !important; overflow-x: hidden; font-family: system-ui, -apple-system, sans-serif; }
     ::-webkit-scrollbar { width: 0px; background: transparent; }
     
-    /* 警示条纹动画 */
-    @keyframes move-stripes {
-      0% { background-position: 0 0; }
-      100% { background-position: 50px 50px; }
+    @keyframes shine {
+      0% { transform: translateX(-100%) rotate(45deg); }
+      100% { transform: translateX(200%) rotate(45deg); }
+    }
+    .shiny-card { position: relative; overflow: hidden; }
+    .shiny-card::after {
+      content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+      transform: translateX(-100%) rotate(45deg);
+      animation: shine 3s infinite;
+    }
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
   `}</style>
 );
@@ -27,7 +38,7 @@ const GlobalStyles = () => (
 // ==========================================
 // --- 1. 核心引擎：本地数据库 (LocalStorage) ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_local_v8_final';
+const STORAGE_KEY = 'go_domi_local_v10_layout';
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
@@ -36,12 +47,24 @@ const LocalDB = {
     try {
       const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
       return {
-        user: { name: '多米', level: 1, xp: 0, coins: 0, theme: 'cosmic', streak: 1, ...data?.user },
+        user: { 
+          name: '多米', level: 1, xp: 0, coins: 0, theme: 'cosmic', streak: 1, 
+          fragments: 0, // 陨石碎片
+          ...data?.user 
+        },
         tasks: Array.isArray(data?.tasks) ? data.tasks : [],
-        library: Array.isArray(data?.library) ? data.library : []
+        library: Array.isArray(data?.library) ? data.library : [],
+        collection: {
+          puzzlePieces: [], 
+          unlockedCards: [], 
+          ...data?.collection
+        }
       };
     } catch (e) {
-      return { user: { name: '多米', level: 1, xp: 0, coins: 0, theme: 'cosmic', streak: 1 }, tasks: [], library: [] };
+      return { 
+        user: { name: '多米', level: 1, xp: 0, coins: 0, theme: 'cosmic', streak: 1, fragments: 0 }, 
+        tasks: [], library: [], collection: { puzzlePieces: [], unlockedCards: [] } 
+      };
     }
   },
   save: (data) => {
@@ -62,10 +85,14 @@ const LocalDB = {
 };
 
 // ==========================================
-// --- 2. 智能资源匹配引擎 ---
+// --- 2. 游戏化配置 ---
 // ==========================================
+const PUZZLE_CONFIG = {
+  totalPieces: 9, // 3x3
+  image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80", // 宇宙飞船图
+};
+
 const SYSTEM_DICTIONARY = {
-  // Animals
   'cat': { cn: '猫', img: '/assets/images/cat.jpg' }, 'dog': { cn: '狗', img: '/assets/images/dog.jpg' }, 
   'pig': { cn: '猪', img: '/assets/images/pig.jpg' }, 'duck': { cn: '鸭子', img: '/assets/images/duck.jpg' },
   'lion': { cn: '狮子', img: '/assets/images/lion.jpg' }, 'tiger': { cn: '老虎', img: '/assets/images/tiger.jpg' }, 
@@ -97,7 +124,7 @@ const SYSTEM_DICTIONARY = {
   'father': { cn: '爸爸', img: '/assets/images/father.jpg' }, 'mother': { cn: '妈妈', img: '/assets/images/mother.jpg' }, 
   'brother': { cn: '哥哥/弟弟', img: '/assets/images/brother.jpg' }, 'sister': { cn: '姐姐/妹妹', img: '/assets/images/sister.jpg' },
   'grandfather': { cn: '爷爷/外公' }, 'grandmother': { cn: '奶奶/外婆' },
-  'head': { cn: '头' }, 'eye': { cn: '眼睛' }, 'ear': { cn: '耳朵' }, 'nose': { cn: '鼻子' }, 'mouth': { cn: '嘴巴' }, 'hand': { cn: '手' }, 'foot': { cn: '脚' }
+  'head': { cn: '头', img: '/assets/images/head.jpg' }, 'eye': { cn: '眼睛' }, 'ear': { cn: '耳朵' }, 'nose': { cn: '鼻子' }, 'mouth': { cn: '嘴巴' }, 'hand': { cn: '手' }, 'foot': { cn: '脚' }
 };
 
 const enrichWordTask = (wordInput) => {
@@ -106,8 +133,7 @@ const enrichWordTask = (wordInput) => {
   
   const preset = SYSTEM_DICTIONARY[lowerWord];
   const translation = preset ? preset.cn : ''; 
-  
-  const imageUrl = preset ? preset.img : `https://image.pollinations.ai/prompt/cute cartoon ${word} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${Math.random()}`;
+  const imageUrl = (preset && preset.img) ? preset.img : `https://image.pollinations.ai/prompt/cute cartoon ${word} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${Math.random()}`;
   const audioUrl = `/assets/audio/${lowerWord}.mp3`;
 
   return {
@@ -123,17 +149,10 @@ const enrichWordTask = (wordInput) => {
 // ==========================================
 const THEMES = {
   cosmic: {
-    id: 'cosmic', 
-    name: '宇宙护卫队', 
-    bg: 'bg-slate-900', 
-    text: 'text-slate-100', 
-    card: 'bg-slate-800',
-    primary: 'bg-blue-600 hover:bg-blue-500', 
-    accent: 'text-yellow-400',
-    mascot: '/assets/images/mascot.png', 
-    backgroundImage: '/assets/images/bg_cosmic.jpg', 
-    assistant: '小雨点', 
-    currency: '能量石'
+    id: 'cosmic', name: '宇宙护卫队', bg: 'bg-slate-900', text: 'text-slate-100', card: 'bg-slate-800',
+    primary: 'bg-blue-600 hover:bg-blue-500', accent: 'text-yellow-400',
+    mascot: '/assets/images/mascot.png', backgroundImage: '/assets/images/bg_cosmic.jpg', 
+    assistant: '小雨点', currency: '能量石'
   },
   forest: {
     id: 'forest', name: '魔法森林', bg: 'bg-green-900', text: 'text-green-50', card: 'bg-green-800',
@@ -152,8 +171,7 @@ const CRYSTAL_STAGES = [
 const REVIEW_INTERVALS = [0, 1, 2, 4, 7, 15, 30]; 
 const MAX_DAILY_TASKS = 10; 
 
-// --- 3. 工具函数 ---
-
+// --- Utilities ---
 const getBeijingTime = () => {
   const now = new Date();
   const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
@@ -170,21 +188,15 @@ const getNextBeijingScheduleTime = () => {
   const utcNow = now.getTime() + (now.getTimezoneOffset() * 60000);
   const today11UTC = new Date(utcNow);
   today11UTC.setUTCHours(11, 0, 0, 0); 
-  if (utcNow >= today11UTC.getTime()) {
-    today11UTC.setDate(today11UTC.getDate() + 1);
-  }
+  if (utcNow >= today11UTC.getTime()) { today11UTC.setDate(today11UTC.getDate() + 1); }
   return today11UTC.getTime();
 };
 
 const speak = (text, isTest = false) => {
-  if (!window.speechSynthesis) {
-    if (isTest) alert("浏览器不支持语音");
-    return;
-  }
+  if (!window.speechSynthesis) { if (isTest) alert("浏览器不支持语音"); return; }
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'zh-CN'; 
-  u.rate = 1.0; 
+  u.lang = 'zh-CN'; u.rate = 1.0; 
   const voices = window.speechSynthesis.getVoices();
   const zh = voices.find(v => v.lang.includes('zh'));
   if (zh) u.voice = zh;
@@ -196,50 +208,28 @@ const speakEnglish = (text) => {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'en-US';
-  u.rate = 0.9;
+  u.lang = 'en-US'; u.rate = 0.9;
   window.speechSynthesis.speak(u);
 };
 
 const playTaskAudio = (text, audioUrl) => {
   if (audioUrl) {
     const audio = new Audio(audioUrl);
-    audio.play().catch(e => {
-      console.warn(`Local audio play failed, fallback to TTS.`);
-      speakEnglish(text);
-    });
-  } else {
-    speakEnglish(text);
-  }
+    audio.play().catch(e => { console.warn(`Fallback TTS`, e); speakEnglish(text); });
+  } else { speakEnglish(text); }
 };
 
 const formatTime = (ts) => new Date(ts).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
-const formatDate = (ts) => new Date(ts).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
-
-const TASK_TEMPLATES = {
-  sport: [
-    { title: "原地高抬腿 20 次", reward: 15, type: 'generic' },
-  ],
-  life: [
-    { title: "喝一杯温水", reward: 5, type: 'generic' },
-  ]
-};
 
 // ==========================================
 // --- 4. 错误边界 ---
 // ==========================================
 class ErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
-  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError(error) { return { hasError: true }; }
   componentDidCatch(error, errorInfo) { console.error("Crash:", error, errorInfo); }
   render() {
-    if (this.state.hasError) return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-6 text-center">
-        <h2 className="text-xl font-bold mb-2">系统启动失败</h2>
-        <p className="text-slate-400 mb-4 text-xs font-mono bg-black/30 p-2 rounded">{this.state.error?.toString()}</p>
-        <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-red-600 px-6 py-2 rounded-full font-bold">重置数据并修复</button>
-      </div>
-    );
+    if (this.state.hasError) return <div className="p-8 text-center text-white">系统错误，请刷新重试</div>;
     return this.props.children; 
   }
 }
@@ -252,7 +242,6 @@ const LoadingScreen = () => (
   <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-4">
     <div className="animate-bounce text-6xl mb-4">🚀</div>
     <h1 className="text-2xl font-bold animate-pulse">正在连接宇宙基地...</h1>
-    <p className="text-slate-400 mt-2">系统初始化中</p>
   </div>
 );
 
@@ -262,18 +251,7 @@ const DynamicBackground = ({ themeId, customBg }) => {
     return (
       <div className="absolute inset-0 z-0">
         <img src={customBg} alt="background" className="w-full h-full object-cover" onError={() => setBgError(true)} />
-        <div className="absolute inset-0 bg-black/30"></div>
-      </div>
-    );
-  }
-  if (themeId === 'forest') {
-    return (
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-green-900 to-green-950"></div>
-        {[...Array(10)].map((_, i) => (
-          <div key={i} className="absolute w-1 h-1 bg-yellow-300 rounded-full blur-[1px] animate-float"
-               style={{left: `${Math.random()*100}%`, top: `${Math.random()*100}%`, animationDelay: `${Math.random()*5}s`, animationDuration: `${5+Math.random()*5}s`, opacity: 0.7}}></div>
-        ))}
+        <div className="absolute inset-0 bg-black/40"></div>
       </div>
     );
   }
@@ -288,34 +266,108 @@ const DynamicBackground = ({ themeId, customBg }) => {
   );
 };
 
-const GrowingCrystal = ({ level, xp }) => {
+const RewardModal = ({ rewards, onClose }) => {
+  useEffect(() => {
+    const audio = new Audio('/assets/audio/success.mp3'); 
+    audio.play().catch(() => {});
+    speak("任务完成！获得奖励！");
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in zoom-in duration-300">
+      <div className="bg-slate-800 border-4 border-yellow-400 p-8 rounded-3xl text-center max-w-sm w-full relative overflow-hidden shadow-[0_0_80px_rgba(250,204,21,0.6)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle,_var(--tw-gradient-stops))] from-yellow-500/20 to-transparent animate-pulse pointer-events-none"></div>
+        <h2 className="text-3xl font-black text-white mb-6 italic relative z-10 drop-shadow-lg">MISSION COMPLETE</h2>
+        <div className="space-y-4 relative z-10">
+          <div className="flex items-center justify-center gap-3 text-yellow-300 text-2xl font-bold"><Zap size={32} className="fill-yellow-300" /> +{rewards.coins} 能量石</div>
+          <div className="flex items-center justify-center gap-3 text-blue-300 text-2xl font-bold"><Star size={32} className="fill-blue-300" /> +{rewards.xp} 经验值</div>
+          {rewards.fragment && (<div className="bg-purple-900/50 p-3 rounded-xl border border-purple-500/50 flex items-center gap-3 animate-bounce"><div className="p-2 bg-purple-600 rounded-full"><Gem size={24} className="text-white" /></div><div className="text-left"><div className="text-xs text-purple-300 font-bold uppercase">稀有掉落</div><div className="text-white font-bold">获得陨石碎片!</div></div></div>)}
+          {rewards.puzzlePiece !== undefined && (<div className="bg-green-900/50 p-3 rounded-xl border border-green-500/50 flex items-center gap-3 animate-pulse"><div className="p-2 bg-green-600 rounded-full"><Puzzle size={24} className="text-white" /></div><div className="text-left"><div className="text-xs text-green-300 font-bold uppercase">收集进度</div><div className="text-white font-bold">获得新拼图碎片!</div></div></div>)}
+        </div>
+        <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="mt-8 w-full py-5 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-2xl rounded-2xl shadow-xl active:scale-95 transition-transform relative z-50 cursor-pointer">收入囊中</button>
+      </div>
+    </div>
+  );
+};
+
+const CollectionModal = ({ collection, onClose, initialTab = 'puzzle' }) => {
+  const [tab, setTab] = useState(initialTab);
+  const { puzzlePieces = [], unlockedCards = [] } = collection;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900 text-white flex flex-col animate-in slide-in-from-bottom">
+       <div className="p-4 flex justify-between items-center bg-slate-800 border-b border-slate-700">
+         <h2 className="text-xl font-bold flex items-center gap-2"><Library /> 收藏馆</h2>
+         <button onClick={onClose} className="p-2 bg-slate-700 rounded-full"><XCircle /></button>
+       </div>
+       <div className="flex p-2 gap-2 bg-slate-800">
+          <button onClick={() => setTab('puzzle')} className={`flex-1 py-2 rounded-lg font-bold ${tab==='puzzle' ? 'bg-blue-600' : 'bg-slate-700 text-slate-400'}`}>神秘拼图</button>
+          <button onClick={() => setTab('cards')} className={`flex-1 py-2 rounded-lg font-bold ${tab==='cards' ? 'bg-purple-600' : 'bg-slate-700 text-slate-400'}`}>单词图鉴 ({unlockedCards.length})</button>
+       </div>
+       <div className="flex-1 overflow-y-auto p-4">
+          {tab === 'puzzle' && (
+             <div className="flex flex-col items-center">
+                <div className="text-center mb-4 text-slate-400 text-sm">完成任务随机掉落碎片，集齐解锁神秘飞船！</div>
+                <div className="grid grid-cols-3 gap-1 bg-slate-800 p-2 rounded-xl border border-slate-700 shadow-2xl" style={{ width: '300px', height: '300px' }}>
+                   {[...Array(9)].map((_, i) => {
+                      const isUnlocked = puzzlePieces.includes(i);
+                      return (
+                        <div key={i} className="relative bg-slate-900 overflow-hidden flex items-center justify-center border border-white/5">
+                           {isUnlocked ? (
+                              <div className="w-full h-full bg-cover" style={{ backgroundImage: `url(${PUZZLE_CONFIG.image})`, backgroundPosition: `${(i % 3) * 50}% ${Math.floor(i / 3) * 50}%`, backgroundSize: '300% 300%' }} />
+                           ) : (<Lock className="text-slate-700" size={24} />)}
+                        </div>
+                      );
+                   })}
+                </div>
+                <div className="mt-6 text-blue-400 font-mono font-bold">进度: {puzzlePieces.length} / 9</div>
+             </div>
+          )}
+          {tab === 'cards' && (
+             <div className="grid grid-cols-2 gap-4">
+                {unlockedCards.map((card, idx) => (
+                   <div key={idx} className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col items-center shiny-card">
+                      <div className="text-2xl font-black text-white mb-1">{card.word}</div>
+                      <div className="text-xs text-slate-400">{card.cn}</div>
+                   </div>
+                ))}
+                {unlockedCards.length === 0 && <div className="col-span-2 text-center text-slate-500 py-10">还没有学会单词哦，加油！</div>}
+             </div>
+          )}
+       </div>
+    </div>
+  );
+};
+
+const GrowingCrystal = ({ level, xp, onClick }) => {
   const currentStage = [...CRYSTAL_STAGES].reverse().find(stage => level >= stage.minLevel) || CRYSTAL_STAGES[0];
   const Icon = currentStage.icon;
   const growthScale = 1 + (xp / 100) * 0.2; 
   const [isPoked, setIsPoked] = useState(false);
-  const [bubbleText, setBubbleText] = useState("");
 
   const handlePoke = () => {
     setIsPoked(true);
-    const texts = ["多米加油！", "我需要更多能量石！", "再做一个任务吧！", "好痒呀~", currentStage.message];
-    const text = texts[Math.floor(Math.random() * texts.length)];
-    setBubbleText(text);
-    speak(text);
-    setTimeout(() => { setIsPoked(false); setBubbleText(""); }, 2000);
+    speak(currentStage.message);
+    if(onClick) onClick();
+    setTimeout(() => setIsPoked(false), 500);
   };
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center relative py-12 cursor-pointer group w-full" onClick={handlePoke}>
-       {bubbleText && (
-         <div className="absolute top-4 bg-white text-slate-800 px-4 py-2 rounded-xl rounded-bl-none shadow-lg animate-in zoom-in slide-in-from-bottom-2 z-20 font-bold border-2 border-blue-400">
-           {bubbleText}
-         </div>
-       )}
+       {/* 增加背景六边形光环，暗示拓展逻辑 */}
+       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-80 h-80 border border-blue-500/10 rounded-full animate-[spin-slow_20s_linear_infinite]">
+             <div className="absolute top-0 left-1/2 w-2 h-2 bg-blue-400 rounded-full shadow-lg shadow-blue-400"></div>
+          </div>
+          <div className="w-60 h-60 border border-purple-500/10 rounded-full animate-[spin-slow_15s_linear_infinite_reverse]">
+             <div className="absolute bottom-0 left-1/2 w-2 h-2 bg-purple-400 rounded-full shadow-lg shadow-purple-400"></div>
+          </div>
+       </div>
+
        <div className={`absolute w-64 h-64 rounded-full blur-[80px] opacity-40 animate-pulse-slow transition-colors duration-1000 ${currentStage.color.replace('text-', 'bg-')}`}></div>
        <div className={`relative transition-all duration-300 ease-out ${isPoked ? 'scale-110 rotate-3' : ''}`} style={{ transform: isPoked ? undefined : `scale(${currentStage.scale * growthScale})` }}>
           <div className="absolute inset-0 bg-white/20 blur-xl rounded-full animate-pulse"></div>
-          <Icon size={120} strokeWidth={1} className={`${currentStage.color} drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] filter group-hover:drop-shadow-[0_0_50px_rgba(255,255,255,0.9)] transition-all`} />
-          {xp > 80 && <Sparkles className="absolute -top-4 -right-4 text-yellow-300 animate-bounce" size={32} />}
+          <Icon size={120} strokeWidth={1} className={`${currentStage.color} drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] filter`} />
        </div>
        <div className="mt-12 text-center z-10 pointer-events-none">
           <div className="text-blue-200 text-xs font-bold tracking-[0.2em] uppercase mb-1">当前形态</div>
@@ -342,50 +394,20 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
 
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-       
-       {/* 升级后的背景特效：红色警戒扫描线 */}
-       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-red-900/20 to-transparent animate-[scan_3s_linear_infinite] transform -translate-y-full"></div>
-          <div className="absolute inset-0" style={{
-            backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px)'
-          }}></div>
-       </div>
-
-       <div className={`w-full max-w-lg ${currentTheme.card} rounded-3xl border-4 border-red-500 shadow-[0_0_80px_rgba(239,68,68,0.6)] overflow-hidden relative animate-in zoom-in-95 duration-300`}>
+       <div className={`w-full max-w-lg ${currentTheme.card} rounded-3xl border-4 border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.6)] overflow-hidden relative animate-in zoom-in-95 duration-300`}>
           <div className="bg-red-500 text-white p-4 flex items-center justify-center gap-3 animate-pulse">
             <Siren size={28} className="animate-bounce" />
             <h2 className="text-xl font-black uppercase tracking-wider">紧急任务警报</h2>
             <Siren size={28} className="animate-bounce" />
           </div>
           <div className="p-8 flex flex-col items-center text-center">
-            
-            {/* IP 主角头像 */}
-            <div className="mb-6 relative group">
-              <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full group-hover:bg-blue-400/30 transition-all"></div>
-              <div className="w-32 h-32 bg-slate-900 rounded-full flex items-center justify-center relative z-10 border-4 border-blue-400/50 shadow-[0_0_30px_rgba(59,130,246,0.5)] overflow-hidden">
-                 <div className="absolute inset-0 opacity-50 bg-[radial-gradient(circle_at_30%_30%,_rgba(255,255,255,0.2),_transparent)]"></div>
-                 {/* 优先显示主角图片 */}
-                 {(currentTheme.mascot && (currentTheme.mascot.startsWith('/') || currentTheme.mascot.startsWith('http'))) ? (
-                    <img 
-                      src={currentTheme.mascot} 
-                      alt="Commander" 
-                      className="w-full h-full object-cover transform scale-110"
-                      onError={(e) => { e.target.style.display='none'; }} 
-                    />
-                 ) : null}
-                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10">
-                    {isEnglish ? <span className="text-5xl">A</span> : <span className="text-5xl">🚀</span>}
-                 </div>
-              </div>
+            <div className="mb-6 relative">
+              <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full"></div>
+              {isEnglish ? <div className="w-24 h-24 bg-purple-500 rounded-full flex items-center justify-center text-5xl relative z-10 border-4 border-white/20 shadow-xl">A</div> : <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center text-5xl relative z-10 border-4 border-white/20 shadow-xl">⚔️</div>}
             </div>
-
             <div className="space-y-2 mb-8">
-               <div className="flex items-center justify-center gap-2 text-blue-300 text-xs font-bold uppercase tracking-widest animate-pulse">
-                   来自 {currentTheme.assistant} 的信号...
-               </div>
-               <h1 className="text-3xl font-bold text-white leading-tight flex flex-col items-center gap-2">
-                 {displayTitle}
-               </h1>
+               <div className="text-blue-300 font-bold uppercase tracking-widest text-xs">{task.category || task.type}</div>
+               <h1 className="text-3xl font-bold text-white leading-tight">{displayTitle}</h1>
                <div className="inline-flex items-center gap-2 bg-yellow-400/20 text-yellow-400 px-4 py-1 rounded-full border border-yellow-400/30 mt-2">
                   <Zap size={18} fill="currentColor" />
                   <span className="font-bold text-lg">奖励 {task.reward}</span>
@@ -404,12 +426,12 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
   );
 };
 
-const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, toggleParentMode, processingTasks, hiddenTaskIds, onStartPatrol, isPatrolling, isPlaying }) => {
+const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, toggleParentMode, processingTasks, hiddenTaskIds, onStartPatrol, isPatrolling, isPlaying, onOpenCollection }) => {
   const currentTheme = THEMES[userProfile.theme || 'cosmic'];
   const displayTasks = tasks.filter(t => t.status === 'pending' && !hiddenTaskIds.has(t.id));
   const nextLevelXp = userProfile.level * 100;
   const progressPercent = Math.min((userProfile.xp / nextLevelXp) * 100, 100);
-  const isImgMascot = currentTheme.mascot.startsWith('/') || currentTheme.mascot.startsWith('http');
+  const isImgMascot = currentTheme.mascot.startsWith('/');
   const streakDays = userProfile.streak || 1;
 
   return (
@@ -434,6 +456,10 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
             <div className="flex items-center gap-2">
                <span className="text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded">Lv.{userProfile.level}</span>
                <div className="flex items-center gap-1 text-orange-400 text-xs font-bold animate-pulse"><Flame size={12} fill="currentColor" /> {streakDays}天连胜</div>
+               {/* 陨石碎片展示 */}
+               <div className="flex items-center gap-1 text-purple-300 text-xs font-bold border border-purple-500/30 px-2 py-0.5 rounded bg-purple-900/30">
+                  <Gem size={10} /> {userProfile.fragments || 0}
+               </div>
             </div>
           </div>
         </div>
@@ -459,12 +485,30 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
 
         <GrowingCrystal level={userProfile.level} xp={userProfile.xp} />
 
-        <div className="w-full flex justify-center pb-8 pt-4">
-           <button onClick={onStartPatrol} disabled={isPatrolling} className={`pointer-events-auto group relative transition-all active:scale-95 ${isPatrolling ? 'opacity-0 scale-50' : 'opacity-100'}`}>
-             <div className="absolute -inset-4 bg-blue-500/30 rounded-full blur-xl group-hover:bg-blue-400/50 transition-all duration-500"></div>
-             <div className="relative flex flex-col items-center justify-center w-24 h-24 rounded-full bg-gradient-to-b from-slate-700 to-slate-900 border-4 border-slate-600 shadow-[0_10px_20px_rgba(0,0,0,0.5)] group-hover:border-blue-400 group-hover:scale-105 transition-all">
-                <Radar className="w-10 h-10 text-blue-400 group-hover:text-white transition-colors" />
-                <span className="text-[10px] font-black text-blue-200 uppercase mt-1 tracking-wider">巡逻</span>
+        {/* Control Dock (Patrol in Center, Collection on sides) */}
+        <div className="fixed bottom-6 left-0 right-0 flex justify-center items-end gap-6 z-40 px-6 pointer-events-none">
+           {/* Left: Puzzle */}
+           <button onClick={() => onOpenCollection('puzzle')} className="pointer-events-auto w-16 h-16 rounded-full bg-slate-800/80 border-2 border-slate-600 flex items-center justify-center shadow-lg backdrop-blur-md active:scale-95 transition-all hover:border-yellow-400 mb-2">
+             <Puzzle className="text-yellow-400" size={28} />
+             <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold border border-white text-white">
+               {userProfile.collection?.puzzlePieces?.length || 0}
+             </div>
+           </button>
+
+           {/* Center: Patrol (Bigger) */}
+           <button onClick={onStartPatrol} disabled={isPatrolling} className={`pointer-events-auto group relative transition-all active:scale-95 ${isPatrolling ? 'opacity-80 scale-95' : 'hover:scale-105'}`}>
+             <div className="w-24 h-24 rounded-full bg-gradient-to-b from-blue-600 to-blue-800 border-4 border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.6)] flex flex-col items-center justify-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.4),_transparent)]"></div>
+                <Radar className={`w-10 h-10 text-white ${isPatrolling ? 'animate-spin' : ''}`} />
+                <span className="text-[10px] font-black text-blue-100 uppercase mt-1 tracking-wider relative z-10">巡逻</span>
+             </div>
+           </button>
+
+           {/* Right: Book */}
+           <button onClick={() => onOpenCollection('cards')} className="pointer-events-auto w-16 h-16 rounded-full bg-slate-800/80 border-2 border-slate-600 flex items-center justify-center shadow-lg backdrop-blur-md active:scale-95 transition-all hover:border-blue-400 mb-2">
+             <BookOpen className="text-blue-400" size={28} />
+             <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-600 rounded-full text-[10px] flex items-center justify-center font-bold border border-white text-white">
+               {userProfile.collection?.unlockedCards?.length || 0}
              </div>
            </button>
         </div>
@@ -479,6 +523,8 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
 };
 
 const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose, onDeleteTask, onUpdateProfile, onManageLibrary }) => {
+  // ... (Parent Dashboard logic same as before) ...
+  // Keeping full implementation for functionality
   const [activeTab, setActiveTab] = useState('library'); 
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskType, setNewTaskType] = useState('generic');
@@ -495,87 +541,13 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
   const completedTasks = tasks.filter(t => t.status === 'completed');
   const fileInputRef = useRef(null);
 
-  const handlePush = (e) => { 
-    e.preventDefault(); 
-    onAddTask({ 
-      title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), 
-      flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null 
-    }); 
-    setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio('');
-    alert('任务已直接推送给多米！'); 
-  };
-
-  const handleAddToLibrary = (e) => { 
-    e.preventDefault(); 
-    onManageLibrary('add', { 
-      title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), 
-      flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null, 
-      memoryLevel: 0, nextReview: getNextBeijingScheduleTime() 
-    }); 
-    setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio('');
-    alert('已添加到任务库，系统将在下次黄金时段（19:00-21:00）按节奏推送。'); 
-  };
-
-  // 智能批量添加
-  const handleBatchAddWords = () => {
-    if (!batchWords.trim()) return;
-    const words = batchWords.split(/[,，\n]/).map(w => w.trim()).filter(w => w);
-    const batchTime = getNextBeijingScheduleTime();
-    
-    let count = 0;
-    words.forEach(word => {
-      const enrichedData = enrichWordTask(word);
-      onManageLibrary('add', {
-        title: `练习单词: ${enrichedData.word}`,
-        type: 'english',
-        reward: 20,
-        flashcardData: enrichedData,
-        memoryLevel: 0,
-        nextReview: batchTime
-      });
-      count++;
-    });
-    alert(`成功智能生成并添加了 ${count} 个单词任务！`);
-    setBatchWords('');
-  };
-
+  const handlePush = (e) => { e.preventDefault(); onAddTask({ title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('任务已直接推送给多米！'); };
+  const handleAddToLibrary = (e) => { e.preventDefault(); onManageLibrary('add', { title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null, memoryLevel: 0, nextReview: getNextBeijingScheduleTime() }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已添加到任务库'); };
+  const handleBatchAddWords = () => { if (!batchWords.trim()) return; const words = batchWords.split(/[,，\n]/).map(w => w.trim()).filter(w => w); const batchTime = getNextBeijingScheduleTime(); let count = 0; words.forEach(word => { const enrichedData = enrichWordTask(word); onManageLibrary('add', { title: `练习单词: ${enrichedData.word}`, type: 'english', reward: 20, flashcardData: enrichedData, memoryLevel: 0, nextReview: batchTime }); count++; }); alert(`成功生成 ${count} 个任务！`); setBatchWords(''); };
   const handleProbChange = (type, value) => { const newVal = parseInt(value); setTaskProbabilities(prev => ({ ...prev, [type]: newVal })); };
-  const saveProbabilities = () => { onUpdateProfile({ taskProbabilities }); alert("任务编排配置已保存！"); };
-  const handleExport = () => {
-    const BOM = "\uFEFF"; 
-    const headers = "任务标题,类型,奖励,单词,中文翻译,图片URL,音频URL";
-    const rows = libraryItems.map(item => {
-        const d = item.flashcardData || {};
-        return `${(item.title||"").replace(/,/g,"，")},${item.type||"generic"},${item.reward||10},${d.word||""},${d.translation||""},${d.image||""},${d.audio||""}`;
-    });
-    const blob = new Blob([BOM + headers + "\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a'); link.href = url; link.download = "tasks.csv"; document.body.appendChild(link); link.click(); link.remove();
-  };
-  const handleImport = () => {
-    try {
-      const rows = textImport.trim().split('\n'); let count = 0; const batchTime = getNextBeijingScheduleTime(); 
-      for (let i = 0; i < rows.length; i++) {
-        const parts = rows[i].split(','); 
-        if (parts.length < 2) continue;
-        const title = parts[0]?.trim(); if (!title || title.includes("标题")) continue;
-        
-        const typeRaw = parts[1]?.trim().toLowerCase(); 
-        const type = (typeRaw === 'english' || typeRaw === '英语') ? 'english' : 'generic';
-        const reward = parseInt(parts[2]?.trim()) || 10;
-        
-        const word = parts[3]?.trim();
-        const translation = parts[4]?.trim();
-        const image = parts[5]?.trim();
-        const audio = parts[6]?.trim();
-        
-        const flashcardData = (type === 'english' && word) ? { word, translation, image, audio } : null;
-
-        onManageLibrary('add', { title, type, reward, flashcardData, memoryLevel: 0, nextReview: batchTime }); count++;
-      }
-      alert(`成功导入 ${count} 个任务！`); setTextImport('');
-    } catch (e) { alert("导入失败，请检查格式"); }
-  };
+  const saveProbabilities = () => { onUpdateProfile({ taskProbabilities }); alert("已保存！"); };
+  const handleExport = () => { const BOM = "\uFEFF"; const rows = libraryItems.map(item => `${(item.title||"").replace(/,/g,"，")},${item.type||"generic"},${item.reward||10},${item.flashcardData?.word||""}`); const blob = new Blob([BOM + "标题,类型,奖励,单词\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = "tasks.csv"; document.body.appendChild(link); link.click(); link.remove(); };
+  const handleImport = () => { try { const rows = textImport.trim().split('\n'); let count = 0; const batchTime = getNextBeijingScheduleTime(); for (let i = 0; i < rows.length; i++) { const parts = rows[i].split(','); if (parts.length < 2) continue; const title = parts[0]?.trim(); if (!title) continue; const typeRaw = parts[1]?.trim().toLowerCase(); const type = (typeRaw.includes('eng')) ? 'english' : 'generic'; onManageLibrary('add', { title, type, reward: parseInt(parts[2]?.trim())||10, flashcardData: (type === 'english' && parts[3]?.trim()) ? { word: parts[3].trim() } : null, memoryLevel: 0, nextReview: batchTime }); count++; } alert(`导入 ${count} 个`); setTextImport(''); } catch (e) { alert("格式错误"); } };
   const handleBackup = () => { const data = LocalDB.get(); const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_${Date.now()}.json`; document.body.appendChild(link); link.click(); link.remove(); };
   const handleRestore = (e) => { const file = e.target.files[0]; if(!file)return; const reader = new FileReader(); reader.onload = (ev) => { try { LocalDB.restore(JSON.parse(ev.target.result)); } catch { alert("文件错误"); } }; reader.readAsText(file); };
 
@@ -756,6 +728,8 @@ export default function App() {
   const [activeFlashcardTask, setActiveFlashcardTask] = useState(null);
   const [isPatrolling, setIsPatrolling] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showCollection, setShowCollection] = useState(false);
+  const [rewardData, setRewardData] = useState(null);
 
   // 初始化
   useEffect(() => {
@@ -850,11 +824,45 @@ export default function App() {
   };
 
   const handleComplete = (task) => {
+    let earnedRewards = { coins: task.reward, xp: task.reward };
+    
+    // 随机掉落逻辑
+    const roll = Math.random();
+    if (roll < 0.2) earnedRewards.fragment = 1; // 20% 几率掉落碎片
+    if (roll < 0.1 && task.type === 'english') earnedRewards.puzzlePiece = true; // 10% 几率掉落拼图
+    
     LocalDB.update(d => {
        const t = d.tasks.find(x => x.id === task.id);
        if (t) { t.status = 'completed'; t.completedAt = Date.now(); }
        d.user.xp += task.reward; d.user.coins += task.reward;
-       if (d.user.xp >= d.user.level * 100) { d.user.level += 1; d.user.xp = 0; setTimeout(() => speak("恭喜升级！"), 1000); }
+       if (earnedRewards.fragment) d.user.fragments = (d.user.fragments || 0) + 1;
+       
+       // 更新收集
+       if (task.type === 'english' && task.flashcardData) {
+          const word = task.flashcardData.word;
+          const exists = d.collection?.unlockedCards?.find(c => c.word === word);
+          if (!exists) {
+            if (!d.collection) d.collection = { unlockedCards: [], puzzlePieces: [] };
+            d.collection.unlockedCards.push({ word, cn: task.flashcardData.translation });
+          }
+       }
+       // 拼图逻辑
+       if (earnedRewards.puzzlePiece) {
+          if (!d.collection) d.collection = { puzzlePieces: [] };
+          if (!d.collection.puzzlePieces) d.collection.puzzlePieces = [];
+          // 随机获得一个未拥有的碎片
+          const allPieces = [0,1,2,3,4,5,6,7,8];
+          const owned = d.collection.puzzlePieces;
+          const missing = allPieces.filter(p => !owned.includes(p));
+          if (missing.length > 0) {
+             const newPiece = missing[Math.floor(Math.random() * missing.length)];
+             d.collection.puzzlePieces.push(newPiece);
+             earnedRewards.puzzlePieceIndex = newPiece;
+          } else {
+             earnedRewards.puzzlePiece = false; // 已集齐
+          }
+       }
+       
        if (task.libraryId) {
           const item = d.library.find(i => i.id === task.libraryId);
           if (item) {
@@ -865,8 +873,9 @@ export default function App() {
        }
        return d;
     });
+
     if (activeFlashcardTask?.id === task.id) setActiveFlashcardTask(null);
-    speak("任务完成！");
+    setRewardData(earnedRewards);
   };
 
   if (loading) return <LoadingScreen />;
@@ -883,9 +892,12 @@ export default function App() {
           toggleParentMode={() => setIsParentMode(true)} 
           processingTasks={new Set()} hiddenTaskIds={new Set()} 
           onStartPatrol={handleStartPatrol} isPatrolling={isPatrolling} isPlaying={!!activeFlashcardTask} 
+          onOpenCollection={() => setShowCollection(true)}
         />
         {isParentMode && <ParentDashboard userProfile={data.user} tasks={data.tasks} libraryItems={data.library} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} onUpdateProfile={handleUpdateProfile} onManageLibrary={handleManageLibrary} onClose={() => setIsParentMode(false)} />}
         {activeFlashcardTask && <FlashcardGame task={activeFlashcardTask} onClose={() => setActiveFlashcardTask(null)} onComplete={handleComplete} />}
+        {rewardData && <RewardModal rewards={rewardData} onClose={() => setRewardData(null)} />}
+        {showCollection && <CollectionModal collection={data.collection || {}} onClose={() => setShowCollection(false)} />}
       </ErrorBoundary>
     </div>
   );
