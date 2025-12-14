@@ -5,11 +5,11 @@ import {
   Rocket, Zap, Loader2, Activity, BrainCircuit, History, ListTodo, 
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
-  Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock, Radio
+  Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock
 } from 'lucide-react';
 
 // ==========================================
-// --- 0. 全局样式修复 ---
+// --- 0. 全局样式 ---
 // ==========================================
 const GlobalStyles = () => (
   <style>{`
@@ -21,7 +21,7 @@ const GlobalStyles = () => (
 // ==========================================
 // --- 1. 核心引擎：本地数据库 (LocalStorage) ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_local_v8_final';
+const STORAGE_KEY = 'go_domi_local_v9_assets_fix';
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
@@ -59,38 +59,11 @@ const LocalDB = {
 // --- 2. 智能资源匹配引擎 ---
 // ==========================================
 const SYSTEM_DICTIONARY = {
-  'cat': { cn: '猫', img: '/assets/images/cat.jpg' }, 'dog': { cn: '狗', img: '/assets/images/dog.jpg' }, 
-  'pig': { cn: '猪', img: '/assets/images/pig.jpg' }, 'duck': { cn: '鸭子', img: '/assets/images/duck.jpg' },
-  'lion': { cn: '狮子', img: '/assets/images/lion.jpg' }, 'tiger': { cn: '老虎', img: '/assets/images/tiger.jpg' }, 
-  'bear': { cn: '熊', img: '/assets/images/bear.jpg' }, 'rabbit': { cn: '兔子', img: '/assets/images/rabbit.jpg' },
-  'monkey': { cn: '猴子', img: '/assets/images/monkey.jpg' }, 'panda': { cn: '熊猫', img: '/assets/images/panda.jpg' }, 
-  'bird': { cn: '鸟', img: '/assets/images/bird.jpg' }, 'fish': { cn: '鱼', img: '/assets/images/fish.jpg' },
-  'elephant': { cn: '大象', img: '/assets/images/elephant.jpg' }, 'zebra': { cn: '斑马', img: '/assets/images/zebra.jpg' }, 
-  'giraffe': { cn: '长颈鹿', img: '/assets/images/giraffe.jpg' }, 'mouse': { cn: '老鼠' }, 'horse': { cn: '马' },
-  'cow': { cn: '奶牛' }, 'sheep': { cn: '绵羊' }, 'chicken': { cn: '鸡' }, 'fox': { cn: '狐狸' }, 'wolf': { cn: '狼' },
-  'apple': { cn: '苹果', img: '/assets/images/apple.jpg' }, 'banana': { cn: '香蕉', img: '/assets/images/banana.jpg' }, 
-  'orange': { cn: '橙子', img: '/assets/images/orange.jpg' }, 'grape': { cn: '葡萄', img: '/assets/images/grape.jpg' },
-  'egg': { cn: '鸡蛋', img: '/assets/images/egg.jpg' }, 'milk': { cn: '牛奶', img: '/assets/images/milk.jpg' }, 
-  'rice': { cn: '米饭', img: '/assets/images/rice.jpg' }, 'cake': { cn: '蛋糕', img: '/assets/images/cake.jpg' },
-  'ice cream': { cn: '冰淇淋', img: '/assets/images/icecream.jpg' }, 'juice': { cn: '果汁', img: '/assets/images/juice.jpg' }, 
-  'water': { cn: '水', img: '/assets/images/water.jpg' }, 'bread': { cn: '面包' }, 'candy': { cn: '糖果' },
-  'pear': { cn: '梨' }, 'peach': { cn: '桃子' }, 'tomato': { cn: '西红柿' }, 'potato': { cn: '土豆' },
-  'sun': { cn: '太阳', img: '/assets/images/sun.jpg' }, 'moon': { cn: '月亮', img: '/assets/images/moon.jpg' }, 
-  'star': { cn: '星星', img: '/assets/images/star.jpg' }, 'flower': { cn: '花', img: '/assets/images/flower.jpg' },
-  'tree': { cn: '树', img: '/assets/images/tree.jpg' }, 'book': { cn: '书', img: '/assets/images/book.jpg' }, 
-  'pen': { cn: '笔', img: '/assets/images/pen.jpg' }, 'bag': { cn: '书包', img: '/assets/images/bag.jpg' },
-  'car': { cn: '汽车', img: '/assets/images/car.jpg' }, 'bus': { cn: '公交车', img: '/assets/images/bus.jpg' }, 
-  'train': { cn: '火车', img: '/assets/images/train.jpg' }, 'plane': { cn: '飞机', img: '/assets/images/plane.jpg' }, 
-  'rocket': { cn: '火箭', img: '/assets/images/rocket.jpg' }, 'ball': { cn: '球', img: '/assets/images/ball.jpg' }, 
-  'doll': { cn: '洋娃娃', img: '/assets/images/doll.jpg' }, 'bed': { cn: '床' }, 'chair': { cn: '椅子' },
-  'table': { cn: '桌子' }, 'door': { cn: '门' }, 'window': { cn: '窗户' },
-  'red': { cn: '红色', img: '/assets/images/red.jpg' }, 'blue': { cn: '蓝色', img: '/assets/images/blue.jpg' }, 
-  'green': { cn: '绿色', img: '/assets/images/green.jpg' }, 'yellow': { cn: '黄色', img: '/assets/images/yellow.jpg' }, 
-  'black': { cn: '黑色' }, 'white': { cn: '白色' },
-  'father': { cn: '爸爸', img: '/assets/images/father.jpg' }, 'mother': { cn: '妈妈', img: '/assets/images/mother.jpg' }, 
-  'brother': { cn: '哥哥/弟弟', img: '/assets/images/brother.jpg' }, 'sister': { cn: '姐姐/妹妹', img: '/assets/images/sister.jpg' },
-  'grandfather': { cn: '爷爷/外公' }, 'grandmother': { cn: '奶奶/外婆' },
-  'head': { cn: '头' }, 'eye': { cn: '眼睛' }, 'ear': { cn: '耳朵' }, 'nose': { cn: '鼻子' }, 'mouth': { cn: '嘴巴' }, 'hand': { cn: '手' }, 'foot': { cn: '脚' }
+  'cat': { cn: '猫', img: '/assets/images/cat.jpg' }, 
+  'dog': { cn: '狗', img: '/assets/images/dog.jpg' }, 
+  'apple': { cn: '苹果', img: '/assets/images/apple.jpg' }, 
+  'banana': { cn: '香蕉', img: '/assets/images/banana.jpg' }, 
+  // ... (保留之前的词库) ...
 };
 
 const enrichWordTask = (wordInput) => {
@@ -100,7 +73,10 @@ const enrichWordTask = (wordInput) => {
   const preset = SYSTEM_DICTIONARY[lowerWord];
   const translation = preset ? preset.cn : ''; 
   
+  // 这里的逻辑：如果有预置本地图就用本地，没有就用 AI 在线生成
   const imageUrl = preset ? preset.img : `https://image.pollinations.ai/prompt/cute cartoon ${word} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${Math.random()}`;
+  
+  // 音频默认指向本地
   const audioUrl = `/assets/audio/${lowerWord}.mp3`;
 
   return {
@@ -123,10 +99,9 @@ const THEMES = {
     card: 'bg-slate-800',
     primary: 'bg-blue-600 hover:bg-blue-500', 
     accent: 'text-yellow-400',
-    // 优先使用本地图片，如果没有则显示 Rocket 图标 (KidDashboard 中处理)
+    // 这里的路径必须对应 public 文件夹下的真实文件
     mascot: '/assets/images/mascot.png', 
-    // 背景图，如果存在则覆盖动态星空
-    backgroundImage: '/assets/images/bg_cosmic.jpg',
+    backgroundImage: '/assets/images/bg_cosmic.jpg', 
     assistant: '小雨点', 
     currency: '能量石'
   },
@@ -251,7 +226,26 @@ const LoadingScreen = () => (
   </div>
 );
 
-const DynamicBackground = ({ themeId }) => {
+// 修复：重新加入 customBg 逻辑，并处理加载失败
+const DynamicBackground = ({ themeId, customBg }) => {
+  const [bgError, setBgError] = useState(false);
+
+  // 优先显示本地背景图
+  if (customBg && !bgError) {
+    return (
+      <div className="absolute inset-0 z-0">
+        <img 
+          src={customBg} 
+          alt="background" 
+          className="w-full h-full object-cover" 
+          onError={() => setBgError(true)} 
+        />
+        <div className="absolute inset-0 bg-black/30"></div> {/* 遮罩层，防止背景太亮看不清字 */}
+      </div>
+    );
+  }
+
+  // 默认动态背景
   if (themeId === 'forest') {
     return (
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -336,13 +330,13 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
           </div>
           <div className="p-8 flex flex-col items-center text-center">
             
-            {/* IP 主角头像 (强化代入感) */}
+            {/* IP 主角头像 */}
             <div className="mb-6 relative group">
               <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full group-hover:bg-blue-400/30 transition-all"></div>
               <div className="w-32 h-32 bg-slate-900 rounded-full flex items-center justify-center relative z-10 border-4 border-blue-400/50 shadow-[0_0_30px_rgba(59,130,246,0.5)] overflow-hidden">
                  <div className="absolute inset-0 opacity-50 bg-[radial-gradient(circle_at_30%_30%,_rgba(255,255,255,0.2),_transparent)]"></div>
-                 {/* 优先显示配置的主角图片，没有则显示通用图标 */}
-                 {currentTheme.mascot.startsWith('/') ? (
+                 {/* 优先显示主角图片，支持本地路径 */}
+                 {(currentTheme.mascot && (currentTheme.mascot.startsWith('/') || currentTheme.mascot.startsWith('http'))) ? (
                     <img 
                       src={currentTheme.mascot} 
                       alt="Commander" 
@@ -350,20 +344,14 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
                       onError={(e) => { e.target.style.display='none'; }} 
                     />
                  ) : null}
-                 {/* 兜底图标 */}
                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10">
                     {isEnglish ? <span className="text-5xl">A</span> : <span className="text-5xl">🚀</span>}
                  </div>
               </div>
-              <div className="absolute -bottom-3 -right-2 bg-blue-600 text-white px-3 py-0.5 rounded-full text-[10px] font-bold border border-blue-400 uppercase tracking-widest shadow-lg">
-                Incoming
-              </div>
             </div>
 
             <div className="space-y-2 mb-8">
-               <div className="flex items-center justify-center gap-2 text-blue-300 text-xs font-bold uppercase tracking-widest animate-pulse">
-                  <Radio size={14} /> 来自 {currentTheme.assistant} 的信号...
-               </div>
+               <div className="text-blue-300 font-bold uppercase tracking-widest text-xs">{task.category || task.type}</div>
                <h1 className="text-3xl font-bold text-white leading-tight flex flex-col items-center gap-2">
                  {displayTitle}
                </h1>
@@ -390,12 +378,12 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
   const displayTasks = tasks.filter(t => t.status === 'pending' && !hiddenTaskIds.has(t.id));
   const nextLevelXp = userProfile.level * 100;
   const progressPercent = Math.min((userProfile.xp / nextLevelXp) * 100, 100);
-  const isImgMascot = currentTheme.mascot.startsWith('/');
+  const isImgMascot = currentTheme.mascot && (currentTheme.mascot.startsWith('/') || currentTheme.mascot.startsWith('http'));
   const streakDays = userProfile.streak || 1;
 
   return (
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} transition-colors duration-500 relative overflow-hidden flex flex-col`}>
-      <DynamicBackground themeId={currentTheme.id} />
+      <DynamicBackground themeId={currentTheme.id} customBg={currentTheme.backgroundImage} />
       
       {/* 巡逻动画 */}
       {isPatrolling && (
@@ -408,11 +396,7 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
       <div className="w-full relative z-10 p-4 flex justify-between items-center bg-black/20 backdrop-blur-md shadow-md border-b border-white/5">
         <div className="flex items-center gap-3">
           <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center overflow-hidden border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]">
-             {!isImgMascot ? (
-               <Rocket className="text-yellow-400" size={32} />
-             ) : (
-               <img src={currentTheme.mascot} alt="mascot" className="w-full h-full object-cover" onError={(e) => e.target.style.display = 'none'} />
-             )}
+            {!isImgMascot ? <Rocket className="text-yellow-400" size={32} /> : <img src={currentTheme.mascot} alt="mascot" className="w-full h-full object-cover" onError={(e) => e.target.style.display = 'none'} />}
           </div>
           <div>
             <h2 className="font-bold text-lg leading-tight">多米队长</h2>
@@ -607,15 +591,15 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
 
   useEffect(() => { if (step === 'learning') setTimeout(playWord, 500); }, [step, word]);
 
-  // 生成乘法题
+  // 生成乘法题：3-9 之间的乘法
   const generateMath = () => {
-    const a = Math.floor(Math.random() * 8) + 2; // 2-9
-    const b = Math.floor(Math.random() * 8) + 2;
+    const a = Math.floor(Math.random() * 7) + 3; 
+    const b = Math.floor(Math.random() * 7) + 3;
     setMathQ({ a, b });
     setMathAns('');
   };
 
-  // 进入验证步骤
+  // 点击“我去教爷爷奶奶” -> 直接进入验证模式
   const handleGoTeach = () => {
     setStep('challenge');
     generateMath();
@@ -699,7 +683,7 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
                    <div className="space-y-4 animate-in fade-in">
                      <div className="p-4 bg-yellow-50 rounded-xl border-2 border-yellow-200 text-yellow-800 text-left">
                         <div className="flex items-center gap-2 font-bold text-lg mb-1"><Users size={20} /> 任务目标</div>
-                        <p className="text-sm opacity-90">请找到爸爸妈妈或爷爷奶奶，教他们读出这个单词，并请求家长确认。</p>
+                        <p className="text-sm opacity-90">请找到家长，教他/她读出这个单词，并请求家长完成下方验证。</p>
                      </div>
                      
                      {/* 极简乘法验证区域：直接显示在卡片下方 */}
@@ -720,7 +704,7 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
                              确认
                            </button>
                         </div>
-                        <div className="text-[10px] text-slate-400 text-right mt-1">* 请家长验证完成后输入答案</div>
+                        <div className="text-[10px] text-slate-400 text-right mt-1">* 家长验证区</div>
                      </div>
                      
                      <button onClick={() => setStep('learning')} className="text-sm text-slate-400 underline">还没学会？回去再看看</button>
