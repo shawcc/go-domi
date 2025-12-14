@@ -6,11 +6,11 @@ import {
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
   Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
-  Puzzle, BookOpen, Star, Gift, PieChart, Sliders
+  Puzzle, BookOpen, Star, Gift, Coffee, Dumbbell // 新增图标
 } from 'lucide-react';
 
 // ==========================================
-// --- 0. 全局样式修复 ---
+// --- 0. 全局样式 ---
 // ==========================================
 const GlobalStyles = () => (
   <style>{`
@@ -34,7 +34,7 @@ const GlobalStyles = () => (
 // ==========================================
 // --- 1. 核心引擎：本地数据库 (LocalStorage) ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_local_v11_config';
+const STORAGE_KEY = 'go_domi_local_v10_visuals';
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
@@ -42,17 +42,13 @@ const LocalDB = {
   get: () => {
     try {
       const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      // 默认配置注入
-      const defaultUser = { 
-        name: '多米', level: 1, xp: 0, coins: 0, theme: 'cosmic', streak: 1, 
-        fragments: 0, 
-        pushStartHour: 19, // 默认 19点开始
-        pushEndHour: 21,   // 默认 21点结束
-        dailyLimit: 10,    // 默认每日上限 10
-        taskProbabilities: { english: 50, sport: 30, life: 20 }
-      };
       return {
-        user: { ...defaultUser, ...data?.user },
+        user: { 
+          name: '多米', level: 1, xp: 0, coins: 0, theme: 'cosmic', streak: 1, 
+          fragments: 0, 
+          pushStartHour: 19, pushEndHour: 21, dailyLimit: 10,
+          ...data?.user 
+        },
         tasks: Array.isArray(data?.tasks) ? data.tasks : [],
         library: Array.isArray(data?.library) ? data.library : [],
         collection: {
@@ -86,19 +82,33 @@ const LocalDB = {
 };
 
 // ==========================================
-// --- 2. 游戏化配置 ---
+// --- 2. 游戏化与资源配置 ---
 // ==========================================
 const PUZZLE_CONFIG = {
-  totalPieces: 9, // 3x3
-  image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80", // 宇宙飞船图
+  totalPieces: 9, 
+  image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80", 
 };
 
+// 预置词库 (英语)
 const SYSTEM_DICTIONARY = {
   'cat': { cn: '猫', img: '/assets/images/cat.jpg' }, 'dog': { cn: '狗', img: '/assets/images/dog.jpg' }, 
   'apple': { cn: '苹果', img: '/assets/images/apple.jpg' }, 'banana': { cn: '香蕉', img: '/assets/images/banana.jpg' }, 
   'head': { cn: '头', img: '/assets/images/head.jpg' }, 
 };
 
+// 预置任务模板 (生活/运动 - 带图!)
+const TASK_TEMPLATES = {
+  sport: [
+    { title: "原地高抬腿 20 次", reward: 15, type: 'sport', image: 'https://image.pollinations.ai/prompt/cartoon kid doing high knees exercise, minimalist vector, white background?width=400&height=300&nologo=true' },
+    { title: "开合跳 15 次", reward: 15, type: 'sport', image: 'https://image.pollinations.ai/prompt/cartoon kid doing jumping jacks, minimalist vector, white background?width=400&height=300&nologo=true' },
+  ],
+  life: [
+    { title: "喝一杯温水", reward: 5, type: 'life', image: 'https://image.pollinations.ai/prompt/cartoon glass of water, minimalist vector, white background?width=400&height=300&nologo=true' },
+    { title: "整理自己的玩具", reward: 25, type: 'life', image: 'https://image.pollinations.ai/prompt/cartoon tidying up toys box, minimalist vector, white background?width=400&height=300&nologo=true' },
+  ]
+};
+
+// 英语单词资源补全
 const enrichWordTask = (wordInput) => {
   const word = wordInput.trim();
   const lowerWord = word.toLowerCase();
@@ -108,12 +118,7 @@ const enrichWordTask = (wordInput) => {
   const imageUrl = (preset && preset.img) ? preset.img : `https://image.pollinations.ai/prompt/cute cartoon ${word} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${Math.random()}`;
   const audioUrl = `/assets/audio/${lowerWord}.mp3`;
 
-  return {
-    word: word, 
-    translation: translation,
-    image: imageUrl,
-    audio: audioUrl 
-  };
+  return { word, translation, image: imageUrl, audio: audioUrl };
 };
 
 // ==========================================
@@ -149,26 +154,18 @@ const getBeijingTime = () => {
   return new Date(utc + 8 * 3600000);
 };
 
-// 动态检查时间窗口
 const isBeijingActiveWindow = (startHour, endHour) => {
   const h = getBeijingTime().getHours();
-  // 比如 start=19, end=21，则 19:00-20:59 有效
   return h >= startHour && h < endHour; 
 };
 
-const getNextBeijingScheduleTime = (startHour = 19) => {
+const getNextBeijingScheduleTime = () => {
   const now = new Date();
   const utcNow = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const todayTargetUTC = new Date(utcNow);
-  // 北京时间 19:00 = UTC 11:00. 偏移量 = startHour - 8
-  const targetUTCHour = startHour - 8;
-  
-  todayTargetUTC.setUTCHours(targetUTCHour, 0, 0, 0); 
-  
-  if (utcNow >= todayTargetUTC.getTime()) {
-    todayTargetUTC.setDate(todayTargetUTC.getDate() + 1);
-  }
-  return todayTargetUTC.getTime();
+  const today11UTC = new Date(utcNow);
+  today11UTC.setUTCHours(11, 0, 0, 0); 
+  if (utcNow >= today11UTC.getTime()) { today11UTC.setDate(today11UTC.getDate() + 1); }
+  return today11UTC.getTime();
 };
 
 const speak = (text, isTest = false) => {
@@ -350,6 +347,8 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
   const task = tasks[0]; 
   const isProcessing = processingTasks.has(task.id);
   const isEnglish = task.type === 'english';
+  // 提取图片：优先 flashcardData，其次 task.image (通用任务)
+  const taskImage = isEnglish ? task.flashcardData?.image : (task.image || task.flashcardData?.image);
   const displayTitle = isEnglish ? "英语挑战" : task.title;
 
   useEffect(() => {
@@ -370,10 +369,16 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
             <Siren size={28} className="animate-bounce" />
           </div>
           <div className="p-8 flex flex-col items-center text-center">
-            <div className="mb-6 relative">
-              <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full"></div>
-              {isEnglish ? <div className="w-24 h-24 bg-purple-500 rounded-full flex items-center justify-center text-5xl relative z-10 border-4 border-white/20 shadow-xl">A</div> : <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center text-5xl relative z-10 border-4 border-white/20 shadow-xl">⚔️</div>}
+            
+            {/* 图标展示区 (Visual Cue) */}
+            <div className="mb-6 relative w-48 h-48 rounded-2xl bg-white/10 border-2 border-white/20 flex items-center justify-center overflow-hidden shadow-lg">
+                {taskImage ? (
+                  <img src={taskImage} alt="Task Icon" className="w-full h-full object-cover" onError={(e) => {e.target.style.display='none'}} />
+                ) : (
+                  <div className="text-6xl">{isEnglish ? "A" : "⚔️"}</div>
+                )}
             </div>
+
             <div className="space-y-2 mb-8">
                <div className="text-blue-300 font-bold uppercase tracking-widest text-xs">{task.category || task.type}</div>
                <h1 className="text-3xl font-bold text-white leading-tight flex flex-col items-center gap-2">
@@ -427,10 +432,6 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
             <div className="flex items-center gap-2">
                <span className="text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded">Lv.{userProfile.level}</span>
                <div className="flex items-center gap-1 text-orange-400 text-xs font-bold animate-pulse"><Flame size={12} fill="currentColor" /> {streakDays}天连胜</div>
-               {/* 陨石碎片展示 */}
-               <div className="flex items-center gap-1 text-purple-300 text-xs font-bold border border-purple-500/30 px-2 py-0.5 rounded bg-purple-900/30">
-                  <Gem size={10} /> {userProfile.fragments || 0}
-               </div>
             </div>
           </div>
         </div>
@@ -456,7 +457,7 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
 
         <GrowingCrystal level={userProfile.level} xp={userProfile.xp} />
 
-        {/* Control Dock (Patrol in Center, Collection on sides) */}
+        {/* Control Dock */}
         <div className="fixed bottom-6 left-0 right-0 flex justify-center items-end gap-6 z-40 px-6 pointer-events-none">
            {/* Left: Puzzle */}
            <button onClick={() => onOpenCollection('puzzle')} className="pointer-events-auto w-16 h-16 rounded-full bg-slate-800/80 border-2 border-slate-600 flex items-center justify-center shadow-lg backdrop-blur-md active:scale-95 transition-all hover:border-yellow-400 mb-2">
@@ -466,7 +467,7 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
              </div>
            </button>
 
-           {/* Center: Patrol (Bigger) */}
+           {/* Center: Patrol */}
            <button onClick={onStartPatrol} disabled={isPatrolling} className={`pointer-events-auto group relative transition-all active:scale-95 ${isPatrolling ? 'opacity-80 scale-95' : 'hover:scale-105'}`}>
              <div className="w-24 h-24 rounded-full bg-gradient-to-b from-blue-600 to-blue-800 border-4 border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.6)] flex flex-col items-center justify-center relative overflow-hidden">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.4),_transparent)]"></div>
@@ -505,31 +506,18 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
   const [batchWords, setBatchWords] = useState(''); 
   const [textImport, setTextImport] = useState(''); 
   const [taskProbabilities, setTaskProbabilities] = useState(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
-  
-  // Config States
   const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
   const [pushEnd, setPushEnd] = useState(userProfile.pushEndHour || 21);
   const [dailyLimit, setDailyLimit] = useState(userProfile.dailyLimit || 10);
-
   const pendingTasks = tasks.filter(t => t.status === 'pending');
   const upcomingTasks = libraryItems.filter(item => item.nextReview && item.nextReview > Date.now()).sort((a,b) => a.nextReview - b.nextReview);
   const completedTasks = tasks.filter(t => t.status === 'completed');
   const fileInputRef = useRef(null);
 
   const refresh = () => { if(onDataChange) onDataChange(); };
-
-  const handleSaveConfig = () => {
-    onUpdateProfile({ 
-      taskProbabilities,
-      pushStartHour: parseInt(pushStart),
-      pushEndHour: parseInt(pushEnd),
-      dailyLimit: parseInt(dailyLimit)
-    });
-    alert("配置已保存！");
-  };
-
-  const handlePush = (e) => { e.preventDefault(); onAddTask({ title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('任务已直接推送给多米！'); refresh(); };
-  const handleAddToLibrary = (e) => { e.preventDefault(); onManageLibrary('add', { title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null, memoryLevel: 0, nextReview: getNextBeijingScheduleTime(parseInt(pushStart)) }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已添加到任务库'); refresh(); };
+  const handleSaveConfig = () => { onUpdateProfile({ taskProbabilities, pushStartHour: parseInt(pushStart), pushEndHour: parseInt(pushEnd), dailyLimit: parseInt(dailyLimit) }); alert("配置已保存！"); };
+  const handlePush = (e) => { e.preventDefault(); onAddTask({ title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : (newTaskType === 'generic' ? { image: flashcardImg } : null) }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('任务已直接推送给多米！'); refresh(); };
+  const handleAddToLibrary = (e) => { e.preventDefault(); onManageLibrary('add', { title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : (newTaskType === 'generic' ? { image: flashcardImg } : null), memoryLevel: 0, nextReview: getNextBeijingScheduleTime(parseInt(pushStart)) }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已添加到任务库'); refresh(); };
   
   const handleBatchAddWords = () => {
     if (!batchWords.trim()) return;
@@ -538,14 +526,23 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     let count = 0;
     words.forEach(word => {
       const enrichedData = enrichWordTask(word);
-      onManageLibrary('add', { title: `练习单词: ${enrichedData.word}`, type: 'english', reward: 20, flashcardData: enrichedData, memoryLevel: 0, nextReview: batchTime });
+      onManageLibrary('add', {
+        title: `练习单词: ${enrichedData.word}`,
+        type: 'english',
+        reward: 20,
+        flashcardData: enrichedData,
+        memoryLevel: 0,
+        nextReview: batchTime
+      });
       count++;
     });
     alert(`成功生成 ${count} 个任务！`); setBatchWords(''); refresh();
   };
 
+  const handleProbChange = (type, value) => { const newVal = parseInt(value); setTaskProbabilities(prev => ({ ...prev, [type]: newVal })); };
+  const saveProbabilities = () => { onUpdateProfile({ taskProbabilities }); alert("已保存！"); };
   const handleExport = () => { const BOM = "\uFEFF"; const rows = libraryItems.map(item => `${(item.title||"").replace(/,/g,"，")},${item.type||"generic"},${item.reward||10},${item.flashcardData?.word||""}`); const blob = new Blob([BOM + "标题,类型,奖励,单词\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = "tasks.csv"; document.body.appendChild(link); link.click(); link.remove(); };
-  const handleImport = () => { try { const rows = textImport.trim().split('\n'); let count = 0; const batchTime = getNextBeijingScheduleTime(parseInt(pushStart)); for (let i = 0; i < rows.length; i++) { const parts = rows[i].split(','); if (parts.length < 2) continue; const title = parts[0]?.trim(); if (!title || title.includes("标题")) continue; const typeRaw = parts[1]?.trim().toLowerCase(); const type = (typeRaw.includes('eng')) ? 'english' : 'generic'; onManageLibrary('add', { title, type, reward: parseInt(parts[2]?.trim())||10, flashcardData: (type === 'english' && parts[3]?.trim()) ? { word: parts[3].trim() } : null, memoryLevel: 0, nextReview: batchTime }); count++; } alert(`导入 ${count} 个`); setTextImport(''); refresh(); } catch (e) { alert("格式错误"); } };
+  const handleImport = () => { try { const rows = textImport.trim().split('\n'); let count = 0; const batchTime = getNextBeijingScheduleTime(parseInt(pushStart)); for (let i = 0; i < rows.length; i++) { const parts = rows[i].split(','); if (parts.length < 2) continue; const title = parts[0]?.trim(); if (!title) continue; const typeRaw = parts[1]?.trim().toLowerCase(); const type = (typeRaw.includes('eng')) ? 'english' : 'generic'; onManageLibrary('add', { title, type, reward: parseInt(parts[2]?.trim())||10, flashcardData: (type === 'english' && parts[3]?.trim()) ? { word: parts[3].trim() } : null, memoryLevel: 0, nextReview: batchTime }); count++; } alert(`导入 ${count} 个`); setTextImport(''); refresh(); } catch (e) { alert("格式错误"); } };
   const handleBackup = () => { const data = LocalDB.get(); const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_${Date.now()}.json`; document.body.appendChild(link); link.click(); link.remove(); };
   const handleRestore = (e) => { const file = e.target.files[0]; if(!file)return; const reader = new FileReader(); reader.onload = (ev) => { try { LocalDB.restore(JSON.parse(ev.target.result)); } catch { alert("文件错误"); } }; reader.readAsText(file); };
 
@@ -557,37 +554,36 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
          {activeTab === 'library' && (
            <div className="space-y-6">
              <section className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-2xl shadow-sm border border-blue-100"><h3 className="font-bold mb-4 flex items-center gap-2 text-blue-800"><Wand2 size={18}/> 智能批量添加 (AI)</h3><p className="text-xs text-slate-500 mb-2">输入单词（用逗号或换行分隔），系统将自动生成卡通图片、匹配发音和中文。</p><textarea className="w-full p-3 border rounded-xl text-sm h-24 mb-3 focus:ring-2 focus:ring-blue-300 outline-none" placeholder="例如: lion, pizza, guitar" value={batchWords} onChange={e => setBatchWords(e.target.value)}></textarea><button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">一键生成任务并入库</button></section>
-             <section className="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-slate-300"><h3 className="font-bold mb-4">手动精细添加</h3><div className="space-y-4"><div className="flex gap-2"><button onClick={()=>setNewTaskType('generic')} className={`flex-1 py-2 border rounded ${newTaskType==='generic'?'bg-blue-50 border-blue-500 text-blue-700' : 'border-slate-200 text-slate-500'}`}>通用</button><button onClick={()=>setNewTaskType('english')} className={`flex-1 py-2 border rounded ${newTaskType==='english'?'bg-purple-50 border-purple-500 text-purple-700' : 'border-slate-200 text-slate-500'}`}>英语</button></div><div className="flex gap-2"><input className="flex-1 p-2 border rounded" placeholder="任务名称 (必填)" value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)} /><input className="w-20 p-2 border rounded" type="number" placeholder="奖励" value={newTaskReward} onChange={e=>setNewTaskReward(e.target.value)} /></div>{newTaskType === 'english' && (<div className="bg-purple-50 p-4 rounded-xl border border-purple-100 space-y-3"><div className="flex gap-2"><input className="flex-1 p-2 border rounded" placeholder="英文单词 (Word)" value={flashcardWord} onChange={e=>setFlashcardWord(e.target.value)} /><input className="flex-1 p-2 border rounded" placeholder="中文释义 (Translation)" value={flashcardTrans} onChange={e=>setFlashcardTrans(e.target.value)} /></div><input className="w-full p-2 border rounded text-xs" placeholder="图片链接 (选填，支持 /assets/images/xxx.jpg)" value={flashcardImg} onChange={e=>setFlashcardImg(e.target.value)} /><input className="w-full p-2 border rounded text-xs" placeholder="发音链接 (选填，支持 /assets/audio/xxx.mp3)" value={flashcardAudio} onChange={e=>setFlashcardAudio(e.target.value)} /></div>)}<div className="flex gap-2"><button onClick={handleAddToLibrary} className="flex-1 bg-slate-100 text-slate-700 py-3 rounded font-bold">入库</button><button onClick={handlePush} className="flex-1 bg-slate-800 text-white py-3 rounded font-bold">推送</button></div></div></section>
+             <section className="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-slate-300"><h3 className="font-bold mb-4">手动精细添加</h3><div className="space-y-4"><div className="flex gap-2"><button onClick={()=>setNewTaskType('generic')} className={`flex-1 py-2 border rounded ${newTaskType==='generic'?'bg-blue-50 border-blue-500 text-blue-700' : 'border-slate-200 text-slate-500'}`}>通用</button><button onClick={()=>setNewTaskType('english')} className={`flex-1 py-2 border rounded ${newTaskType==='english'?'bg-purple-50 border-purple-500 text-purple-700' : 'border-slate-200 text-slate-500'}`}>英语</button></div><div className="flex gap-2"><input className="flex-1 p-2 border rounded" placeholder="任务名称 (必填)" value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)} /><input className="w-20 p-2 border rounded" type="number" placeholder="奖励" value={newTaskReward} onChange={e=>setNewTaskReward(e.target.value)} /></div>
+               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                 {newTaskType === 'english' && <div className="flex gap-2"><input className="flex-1 p-2 border rounded" placeholder="英文单词 (Word)" value={flashcardWord} onChange={e=>setFlashcardWord(e.target.value)} /><input className="flex-1 p-2 border rounded" placeholder="中文释义 (Translation)" value={flashcardTrans} onChange={e=>setFlashcardTrans(e.target.value)} /></div>}
+                 <input className="w-full p-2 border rounded text-xs" placeholder="图片链接 (Image URL) - 支持本地 /assets/images/xxx.jpg" value={flashcardImg} onChange={e=>setFlashcardImg(e.target.value)} />
+                 {newTaskType === 'english' && <input className="w-full p-2 border rounded text-xs" placeholder="发音链接 (Audio URL) - 支持本地 /assets/audio/xxx.mp3" value={flashcardAudio} onChange={e=>setFlashcardAudio(e.target.value)} />}
+               </div>
+               <div className="flex gap-2"><button onClick={handleAddToLibrary} className="flex-1 bg-slate-100 text-slate-700 py-3 rounded font-bold">入库</button><button onClick={handlePush} className="flex-1 bg-slate-800 text-white py-3 rounded font-bold">推送</button></div></div></section>
              <section className="bg-white p-6 rounded-2xl shadow-sm"><div className="flex justify-between mb-4 items-center"><h3 className="font-bold">库列表 ({libraryItems.length})</h3><div className="flex gap-2"><button onClick={handleExport} className="text-xs text-blue-600"><FileDown size={14}/> 导出CSV</button></div></div><div className="space-y-2 max-h-[300px] overflow-y-auto">{libraryItems.map(i=>(<div key={i.id} className="flex justify-between p-2 border-b"><div><span className="font-bold">{i.title}</span> <span className="text-xs text-slate-400">Lv.{i.memoryLevel}</span></div><button onClick={()=>onManageLibrary('delete',i.id)} className="text-red-400"><Trash2 size={16}/></button></div>))}</div></section>
            </div>
          )}
-         {activeTab === 'plan' && <div className="bg-white p-6 rounded-2xl shadow-sm"><h3 className="font-bold mb-4"><Moon size={16} className="inline mr-2"/>待推送队列 (排队中)</h3><div className="mb-4 text-xs text-slate-500 bg-slate-50 p-2 rounded">调度引擎状态：{isBeijingActiveWindow(parseInt(pushStart), parseInt(pushEnd)) ? `运行中 (${pushStart}:00-${pushEnd}:00)` : `休眠中 (下次 ${pushStart}:00 启动)`} | 今日已发: {tasks.filter(t => new Date(t.createdAt).toDateString() === new Date().toDateString()).length}/{dailyLimit}</div>{upcomingTasks.length===0?<p className="text-slate-400">无计划</p>:upcomingTasks.map(i=>(<div key={i.id} className="p-2 border-b flex justify-between"><span>{i.title}</span><span className="text-xs bg-purple-100 px-2 rounded">Lv.{i.memoryLevel}</span></div>))}</div>}
-         {activeTab === 'monitor' && <div className="bg-white p-6 rounded-2xl shadow-sm"><h3 className="font-bold mb-4 text-orange-600">当前待办 (孩子可见)</h3>{pendingTasks.length === 0 ? <p className="text-slate-400 py-4">目前没有积压的任务</p> : pendingTasks.map(t=>(<div key={t.id} className="flex justify-between p-2 border-b"><span>{t.title}</span><button onClick={()=>onDeleteTask(t.id)} className="text-red-400 text-xs border border-red-200 px-2 py-1 rounded">撤回</button></div>))}</div>}
+         {activeTab === 'plan' && <div className="bg-white p-6 rounded-2xl shadow-sm"><h3 className="font-bold mb-4"><Moon size={16} className="inline mr-2"/>待推送队列</h3><div className="mb-4 text-xs text-slate-500 bg-slate-50 p-2 rounded">调度引擎状态：{isBeijingActiveWindow(parseInt(pushStart), parseInt(pushEnd)) ? `运行中 (${pushStart}:00-${pushEnd}:00)` : `休眠中 (下次 ${pushStart}:00 启动)`} | 今日已发: {tasks.filter(t => new Date(t.createdAt).toDateString() === new Date().toDateString()).length}/{dailyLimit}</div>{upcomingTasks.length===0?<p className="text-slate-400">无计划</p>:upcomingTasks.map(i=>(<div key={i.id} className="p-2 border-b flex justify-between"><span>{i.title}</span><span className="text-xs bg-purple-100 px-2 rounded">Lv.{i.memoryLevel}</span></div>))}</div>}
+         {activeTab === 'monitor' && <div className="bg-white p-6 rounded-2xl shadow-sm"><h3 className="font-bold mb-4">实时待办</h3>{pendingTasks.map(t=>(<div key={t.id} className="flex justify-between p-2 border-b"><span>{t.title}</span><button onClick={()=>onDeleteTask(t.id)} className="text-red-400"><XCircle size={16}/></button></div>))}</div>}
          {activeTab === 'history' && <div className="bg-white p-6 rounded-2xl shadow-sm"><h3 className="font-bold mb-4">完成记录</h3>{completedTasks.map(t=>(<div key={t.id} className="flex justify-between p-2 border-b text-sm"><span className="text-slate-700">{t.title}</span><span className="text-green-600">{formatTime(t.completedAt)}</span></div>))}</div>}
          {activeTab === 'config' && (
             <div className="space-y-6">
               <section className="bg-white p-6 rounded-2xl shadow-sm">
                 <h3 className="font-bold mb-4 flex items-center gap-2"><Sliders size={18}/> 调度配置</h3>
                 <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div><label className="text-xs text-slate-500">推送开始时间 (点)</label><input type="number" className="w-full p-2 border rounded" value={pushStart} onChange={e=>setPushStart(e.target.value)} /></div>
-                  <div><label className="text-xs text-slate-500">推送结束时间 (点)</label><input type="number" className="w-full p-2 border rounded" value={pushEnd} onChange={e=>setPushEnd(e.target.value)} /></div>
+                  <div><label className="text-xs text-slate-500">推送开始</label><input type="number" className="w-full p-2 border rounded" value={pushStart} onChange={e=>setPushStart(e.target.value)} /></div>
+                  <div><label className="text-xs text-slate-500">推送结束</label><input type="number" className="w-full p-2 border rounded" value={pushEnd} onChange={e=>setPushEnd(e.target.value)} /></div>
                   <div className="col-span-2"><label className="text-xs text-slate-500">每日最大任务量</label><input type="number" className="w-full p-2 border rounded" value={dailyLimit} onChange={e=>setDailyLimit(e.target.value)} /></div>
                 </div>
-                
                 <div className="border-t pt-4">
                   <label className="text-xs text-slate-500 mb-2 block">随机生成概率 (当任务库空时)</label>
                   {['english', 'sport', 'life'].map(type => (
-                    <div key={type} className="flex items-center gap-2 mb-2">
-                       <span className="text-xs w-16 capitalize">{type}</span>
-                       <input type="range" className="flex-1" min="0" max="100" value={taskProbabilities[type]} onChange={e => setTaskProbabilities(p => ({...p, [type]: parseInt(e.target.value)}))} />
-                       <span className="text-xs w-8">{taskProbabilities[type]}%</span>
-                    </div>
+                    <div key={type} className="flex items-center gap-2 mb-2"><span className="text-xs w-16 capitalize">{type}</span><input type="range" className="flex-1" min="0" max="100" value={taskProbabilities[type]} onChange={e => setTaskProbabilities(p => ({...p, [type]: parseInt(e.target.value)}))} /><span className="text-xs w-8">{taskProbabilities[type]}%</span></div>
                   ))}
                 </div>
-
                 <button onClick={handleSaveConfig} className="w-full mt-4 py-2 bg-slate-800 text-white rounded font-bold">保存配置</button>
               </section>
-              
               <section className="bg-white p-6 rounded-2xl shadow-sm"><h3 className="font-bold mb-4">数据备份</h3><div className="grid grid-cols-2 gap-3"><button onClick={handleBackup} className="p-3 bg-slate-100 rounded text-xs font-bold flex items-center justify-center gap-2"><FileDown size={16}/> 备份</button><button onClick={()=>fileInputRef.current.click()} className="p-3 bg-slate-100 rounded text-xs font-bold flex items-center justify-center gap-2"><FileUp size={16}/> 恢复</button><input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div></section>
             </div>
          )}
@@ -596,7 +592,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
   );
 };
 
-// --- 重构：社交验证版游戏模块 (极简版 + 乘法验证) ---
+// --- 重构：社交验证版游戏模块 (图文模式 + 乘法验证) ---
 const FlashcardGame = ({ task, onClose, onComplete }) => {
   const [step, setStep] = useState('learning'); 
   const [imageError, setImageError] = useState(false);
@@ -621,7 +617,7 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
     setMathAns('');
   };
 
-  // 点击“我去教爷爷奶奶” -> 直接显示验证
+  // 点击“我去教爷爷奶奶” -> 直接进入验证模式
   const handleGoTeach = () => {
     setStep('challenge');
     generateMath();
@@ -648,23 +644,11 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
         <div className="w-full h-64 bg-slate-100 relative flex items-center justify-center overflow-hidden">
            {imageError ? (
              <div className="flex flex-col items-center justify-center w-full h-full bg-slate-200">
-                <img 
-                  src={`https://source.unsplash.com/400x300/?${word}`} 
-                  alt={word} 
-                  className="w-full h-full object-cover opacity-80"
-                  onError={(e) => { e.target.style.display='none'; }} 
-                />
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <span className="bg-black/50 text-white px-2 py-1 rounded text-xs">本地图片未找到</span>
-                </div>
+                <img src={`https://source.unsplash.com/400x300/?${word}`} alt={word} className="w-full h-full object-cover opacity-80" onError={(e) => { e.target.style.display='none'; }} />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><span className="bg-black/50 text-white px-2 py-1 rounded text-xs">本地图片未找到</span></div>
              </div>
            ) : (
-             <img 
-               src={imageUrl} 
-               alt={word} 
-               className="w-full h-full object-cover" 
-               onError={() => setImageError(true)}
-             />
+             <img src={imageUrl} alt={word} className="w-full h-full object-cover" onError={() => setImageError(true)} />
            )}
            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
               <div className="text-white font-bold text-lg opacity-80 flex items-center gap-2"><ImageIcon size={16}/> 英语卡片</div>
@@ -694,8 +678,7 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
 
                {/* 播放按钮 */}
                <button onClick={playWord} className="inline-flex items-center gap-2 text-blue-500 hover:text-blue-700 font-bold bg-blue-50 px-6 py-3 rounded-full border border-blue-100 shadow-sm active:scale-95 transition-all">
-                  {audioUrl ? <Headphones size={24} /> : <Volume2 size={24} />} 
-                  {audioUrl ? "播放原声" : "听发音"}
+                  {audioUrl ? <Headphones size={24} /> : <Volume2 size={24} />} {audioUrl ? "播放原声" : "听发音"}
                </button>
 
                <div className="border-t border-slate-100 pt-6 mt-6">
@@ -726,7 +709,7 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
                              确认
                            </button>
                         </div>
-                        <div className="text-[10px] text-slate-400 text-right mt-1">* 请家长验证完成后输入答案</div>
+                        <div className="text-[10px] text-slate-400 text-right mt-1">* 家长验证区</div>
                      </div>
                      
                      <button onClick={() => setStep('learning')} className="text-sm text-slate-400 underline">还没学会？回去再看看</button>
@@ -791,8 +774,6 @@ export default function App() {
     return () => clearInterval(scheduler);
   }, [data]);
 
-  // ... (Other handlers like handleAddTask, handleStartPatrol same as before)
-  // Re-implementing simplified handlers for context
   const handleAddTask = (d) => LocalDB.update(s => { 
     if (!Array.isArray(s.tasks)) s.tasks = [];
     s.tasks.push({ ...d, id: generateId(), status: 'pending', createdAt: Date.now() }); 
@@ -898,6 +879,7 @@ export default function App() {
   };
 
   if (loading) return <LoadingScreen />;
+
   const pendingTasks = (data.tasks || []).filter(t => t.status === 'pending');
 
   return (
