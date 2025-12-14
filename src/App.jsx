@@ -21,7 +21,7 @@ const GlobalStyles = () => (
 // ==========================================
 // --- 1. 核心引擎：本地数据库 (LocalStorage) ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_local_v9_assets_fix';
+const STORAGE_KEY = 'go_domi_local_v8_final';
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
@@ -56,14 +56,57 @@ const LocalDB = {
 };
 
 // ==========================================
-// --- 2. 智能资源匹配引擎 ---
+// --- 2. 智能资源与音效引擎 ---
 // ==========================================
+
+// --- 系统音效配置 ---
+// 逻辑：优先加载本地文件，如果本地没有(404)，自动使用 fallback 的在线链接
+const SOUND_EFFECTS = {
+  // 警报：任务弹出时 (小雨点警报)
+  alert: {
+    local: '/assets/audio/alert.mp3',
+    fallback: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3' // Sci-fi Alert
+  },
+  // 成功：任务完成/验证通过
+  success: {
+    local: '/assets/audio/success.mp3',
+    fallback: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3' // Success Coin
+  },
+  // 巡逻：雷达扫描
+  patrol: {
+    local: '/assets/audio/patrol.mp3',
+    fallback: 'https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3' // Scanner
+  },
+  // 升级：等级提升
+  levelup: {
+    local: '/assets/audio/levelup.mp3',
+    fallback: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3' // Win
+  }
+};
+
+// 播放系统音效 (核心修复：支持本地优先 + 在线回退)
+const playSystemSound = (type) => {
+  const config = SOUND_EFFECTS[type];
+  if (!config) return;
+
+  const audio = new Audio(config.local);
+  
+  // 尝试播放本地
+  audio.play().catch(() => {
+    // 本地失败(例如文件不存在)，尝试在线
+    console.log(`Local sound ${type} not found, playing fallback.`);
+    const fallbackAudio = new Audio(config.fallback);
+    fallbackAudio.volume = 0.5; // 在线音效可能声音大，稍微调小
+    fallbackAudio.play().catch(e => console.warn("Audio play blocked:", e));
+  });
+};
+
+// 预置词库
 const SYSTEM_DICTIONARY = {
-  'cat': { cn: '猫', img: '/assets/images/cat.jpg' }, 
-  'dog': { cn: '狗', img: '/assets/images/dog.jpg' }, 
-  'apple': { cn: '苹果', img: '/assets/images/apple.jpg' }, 
-  'banana': { cn: '香蕉', img: '/assets/images/banana.jpg' }, 
-  // ... (保留之前的词库) ...
+  'cat': { cn: '猫', img: '/assets/images/cat.jpg' }, 'dog': { cn: '狗', img: '/assets/images/dog.jpg' }, 
+  'apple': { cn: '苹果', img: '/assets/images/apple.jpg' }, 'banana': { cn: '香蕉', img: '/assets/images/banana.jpg' }, 
+  'orange': { cn: '橙子', img: '/assets/images/orange.jpg' }, 
+  // ... (可继续扩充)
 };
 
 const enrichWordTask = (wordInput) => {
@@ -72,19 +115,10 @@ const enrichWordTask = (wordInput) => {
   
   const preset = SYSTEM_DICTIONARY[lowerWord];
   const translation = preset ? preset.cn : ''; 
-  
-  // 这里的逻辑：如果有预置本地图就用本地，没有就用 AI 在线生成
   const imageUrl = preset ? preset.img : `https://image.pollinations.ai/prompt/cute cartoon ${word} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${Math.random()}`;
-  
-  // 音频默认指向本地
   const audioUrl = `/assets/audio/${lowerWord}.mp3`;
 
-  return {
-    word: word, 
-    translation: translation,
-    image: imageUrl,
-    audio: audioUrl 
-  };
+  return { word, translation, image: imageUrl, audio: audioUrl };
 };
 
 // ==========================================
@@ -92,18 +126,10 @@ const enrichWordTask = (wordInput) => {
 // ==========================================
 const THEMES = {
   cosmic: {
-    id: 'cosmic', 
-    name: '宇宙护卫队', 
-    bg: 'bg-slate-900', 
-    text: 'text-slate-100', 
-    card: 'bg-slate-800',
-    primary: 'bg-blue-600 hover:bg-blue-500', 
-    accent: 'text-yellow-400',
-    // 这里的路径必须对应 public 文件夹下的真实文件
-    mascot: '/assets/images/mascot.png', 
-    backgroundImage: '/assets/images/bg_cosmic.jpg', 
-    assistant: '小雨点', 
-    currency: '能量石'
+    id: 'cosmic', name: '宇宙护卫队', bg: 'bg-slate-900', text: 'text-slate-100', card: 'bg-slate-800',
+    primary: 'bg-blue-600 hover:bg-blue-500', accent: 'text-yellow-400',
+    mascot: '/assets/images/mascot.png', backgroundImage: '/assets/images/bg_cosmic.jpg', 
+    assistant: '小雨点', currency: '能量石'
   },
   forest: {
     id: 'forest', name: '魔法森林', bg: 'bg-green-900', text: 'text-green-50', card: 'bg-green-800',
@@ -122,8 +148,7 @@ const CRYSTAL_STAGES = [
 const REVIEW_INTERVALS = [0, 1, 2, 4, 7, 15, 30]; 
 const MAX_DAILY_TASKS = 10; 
 
-// --- 3. 工具函数 ---
-
+// --- Timezone & Helpers ---
 const getBeijingTime = () => {
   const now = new Date();
   const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
@@ -147,18 +172,13 @@ const getNextBeijingScheduleTime = () => {
 };
 
 const speak = (text, isTest = false) => {
-  if (!window.speechSynthesis) {
-    if (isTest) alert("浏览器不支持语音");
-    return;
-  }
+  if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'zh-CN'; 
-  u.rate = 1.0; 
+  u.lang = 'zh-CN'; u.rate = 1.0; 
   const voices = window.speechSynthesis.getVoices();
   const zh = voices.find(v => v.lang.includes('zh'));
   if (zh) u.voice = zh;
-  u.onerror = (e) => { if(isTest) console.error(e); };
   window.speechSynthesis.speak(u);
 };
 
@@ -166,8 +186,7 @@ const speakEnglish = (text) => {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'en-US';
-  u.rate = 0.9;
+  u.lang = 'en-US'; u.rate = 0.9;
   window.speechSynthesis.speak(u);
 };
 
@@ -186,15 +205,6 @@ const playTaskAudio = (text, audioUrl) => {
 const formatTime = (ts) => new Date(ts).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
 const formatDate = (ts) => new Date(ts).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
 
-const TASK_TEMPLATES = {
-  sport: [
-    { title: "原地高抬腿 20 次", reward: 15, type: 'generic' },
-  ],
-  life: [
-    { title: "喝一杯温水", reward: 5, type: 'generic' },
-  ]
-};
-
 // ==========================================
 // --- 4. 错误边界 ---
 // ==========================================
@@ -206,8 +216,7 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-6 text-center">
         <h2 className="text-xl font-bold mb-2">系统启动失败</h2>
-        <p className="text-slate-400 mb-4 text-xs font-mono bg-black/30 p-2 rounded">{this.state.error?.toString()}</p>
-        <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-red-600 px-6 py-2 rounded-full font-bold">重置数据并修复</button>
+        <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-red-600 px-6 py-2 rounded-full font-bold">重置修复</button>
       </div>
     );
     return this.props.children; 
@@ -226,26 +235,16 @@ const LoadingScreen = () => (
   </div>
 );
 
-// 修复：重新加入 customBg 逻辑，并处理加载失败
 const DynamicBackground = ({ themeId, customBg }) => {
   const [bgError, setBgError] = useState(false);
-
-  // 优先显示本地背景图
   if (customBg && !bgError) {
     return (
       <div className="absolute inset-0 z-0">
-        <img 
-          src={customBg} 
-          alt="background" 
-          className="w-full h-full object-cover" 
-          onError={() => setBgError(true)} 
-        />
-        <div className="absolute inset-0 bg-black/30"></div> {/* 遮罩层，防止背景太亮看不清字 */}
+        <img src={customBg} alt="background" className="w-full h-full object-cover" onError={() => setBgError(true)} />
+        <div className="absolute inset-0 bg-black/30"></div>
       </div>
     );
   }
-
-  // 默认动态背景
   if (themeId === 'forest') {
     return (
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -312,11 +311,17 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
   const displayTitle = isEnglish ? "英语挑战" : task.title;
 
   useEffect(() => {
+    // 延迟播放警报音效，然后播报
     const timer = setTimeout(() => {
-        const intro = isEnglish ? "英语挑战时间！" : "紧急任务！";
-        const content = isEnglish ? "请完成一个单词练习" : task.title;
-        speak(`${intro} ${content}`);
-    }, 500);
+        playSystemSound('alert'); // 先播音效：biu biu biu!
+        
+        // 1.5秒后开始读文字，避免声音重叠
+        setTimeout(() => {
+           const intro = isEnglish ? "英语挑战时间！" : "紧急任务！";
+           const content = isEnglish ? "请完成一个单词练习" : task.title;
+           speak(`${intro} ${content}`);
+        }, 1500);
+    }, 300);
     return () => clearTimeout(timer);
   }, [task.id, task.title, task.type]);
 
@@ -329,27 +334,10 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
             <Siren size={28} className="animate-bounce" />
           </div>
           <div className="p-8 flex flex-col items-center text-center">
-            
-            {/* IP 主角头像 */}
-            <div className="mb-6 relative group">
-              <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full group-hover:bg-blue-400/30 transition-all"></div>
-              <div className="w-32 h-32 bg-slate-900 rounded-full flex items-center justify-center relative z-10 border-4 border-blue-400/50 shadow-[0_0_30px_rgba(59,130,246,0.5)] overflow-hidden">
-                 <div className="absolute inset-0 opacity-50 bg-[radial-gradient(circle_at_30%_30%,_rgba(255,255,255,0.2),_transparent)]"></div>
-                 {/* 优先显示主角图片，支持本地路径 */}
-                 {(currentTheme.mascot && (currentTheme.mascot.startsWith('/') || currentTheme.mascot.startsWith('http'))) ? (
-                    <img 
-                      src={currentTheme.mascot} 
-                      alt="Commander" 
-                      className="w-full h-full object-cover transform scale-110"
-                      onError={(e) => { e.target.style.display='none'; }} 
-                    />
-                 ) : null}
-                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10">
-                    {isEnglish ? <span className="text-5xl">A</span> : <span className="text-5xl">🚀</span>}
-                 </div>
-              </div>
+            <div className="mb-6 relative">
+              <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full"></div>
+              {isEnglish ? <div className="w-24 h-24 bg-purple-500 rounded-full flex items-center justify-center text-5xl relative z-10 border-4 border-white/20 shadow-xl">A</div> : <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center text-5xl relative z-10 border-4 border-white/20 shadow-xl">⚔️</div>}
             </div>
-
             <div className="space-y-2 mb-8">
                <div className="text-blue-300 font-bold uppercase tracking-widest text-xs">{task.category || task.type}</div>
                <h1 className="text-3xl font-bold text-white leading-tight flex flex-col items-center gap-2">
@@ -378,14 +366,13 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
   const displayTasks = tasks.filter(t => t.status === 'pending' && !hiddenTaskIds.has(t.id));
   const nextLevelXp = userProfile.level * 100;
   const progressPercent = Math.min((userProfile.xp / nextLevelXp) * 100, 100);
-  const isImgMascot = currentTheme.mascot && (currentTheme.mascot.startsWith('/') || currentTheme.mascot.startsWith('http'));
+  const isImgMascot = currentTheme.mascot.startsWith('/') || currentTheme.mascot.startsWith('http');
   const streakDays = userProfile.streak || 1;
 
   return (
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} transition-colors duration-500 relative overflow-hidden flex flex-col`}>
       <DynamicBackground themeId={currentTheme.id} customBg={currentTheme.backgroundImage} />
       
-      {/* 巡逻动画 */}
       {isPatrolling && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
            <div className="relative w-[300px] h-[300px]"><div className="absolute inset-0 border-4 border-green-500/50 rounded-full bg-green-900/20 shadow-[0_0_50px_rgba(34,197,94,0.3)] animate-ping"></div><div className="absolute inset-0 border border-green-500/30 rounded-full scale-50"></div><div className="absolute top-0 bottom-0 left-1/2 w-[1px] bg-green-500/30"></div><div className="absolute left-0 right-0 top-1/2 h-[1px] bg-green-500/30"></div><div className="absolute top-1/2 left-1/2 w-[150px] h-[150px] bg-gradient-to-r from-transparent to-green-500/50 origin-top-left animate-[spin_2s_linear_infinite] rounded-br-full"></div></div><div className="mt-8 text-green-400 font-mono text-2xl font-black tracking-widest animate-pulse">SCANNING SECTOR...</div>
@@ -591,10 +578,10 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
 
   useEffect(() => { if (step === 'learning') setTimeout(playWord, 500); }, [step, word]);
 
-  // 生成乘法题：3-9 之间的乘法
+  // 生成乘法题：难度适中 (2~5 乘以 2~5，或者 1~9)
   const generateMath = () => {
-    const a = Math.floor(Math.random() * 7) + 3; 
-    const b = Math.floor(Math.random() * 7) + 3;
+    const a = Math.floor(Math.random() * 8) + 2; 
+    const b = Math.floor(Math.random() * 8) + 2;
     setMathQ({ a, b });
     setMathAns('');
   };
@@ -609,6 +596,7 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
   const checkMath = () => {
     if (parseInt(mathAns) === mathQ.a * mathQ.b) {
        setStep('success');
+       playSystemSound('success'); // 播放成功音效
        speak("太棒了！任务完成！");
        setTimeout(() => onComplete(task), 2000);
     } else {
@@ -759,6 +747,7 @@ export default function App() {
            });
            return d;
         });
+        playSystemSound('alert'); // 播放警报音效
         speak("叮咚！任务时间到！");
       }
     }, 10000); 
@@ -782,7 +771,9 @@ export default function App() {
   const handleUpdateProfile = (d) => LocalDB.update(s => { s.user = { ...s.user, ...d }; return s; });
   
   const handleStartPatrol = () => {
-    setIsPatrolling(true); speak("雷达启动！");
+    setIsPatrolling(true); 
+    playSystemSound('patrol'); // 播放雷达音效
+    speak("雷达启动！");
     setTimeout(() => {
        const activeLibIds = new Set(data.tasks.filter(t => t.status === 'pending').map(t => t.libraryId));
        // 1. Sort by nextReview (Plan Priority)
@@ -793,6 +784,7 @@ export default function App() {
        LocalDB.update(d => {
          if (candidate) {
            d.tasks.push({ ...candidate, id: generateId(), status: 'pending', createdAt: Date.now(), libraryId: candidate.id, source: 'patrol' });
+           playSystemSound('alert');
            speak("发现计划任务！");
          } else {
            // Fallback random
@@ -810,6 +802,7 @@ export default function App() {
               createdAt: Date.now(),
               source: 'patrol_random'
            });
+           playSystemSound('alert');
            speak("发现随机单词！");
          }
          return d;
@@ -823,7 +816,10 @@ export default function App() {
        const t = d.tasks.find(x => x.id === task.id);
        if (t) { t.status = 'completed'; t.completedAt = Date.now(); }
        d.user.xp += task.reward; d.user.coins += task.reward;
-       if (d.user.xp >= d.user.level * 100) { d.user.level += 1; d.user.xp = 0; setTimeout(() => speak("恭喜升级！"), 1000); }
+       if (d.user.xp >= d.user.level * 100) { 
+           d.user.level += 1; d.user.xp = 0; 
+           setTimeout(() => { playSystemSound('levelup'); speak("恭喜升级！"); }, 1000); 
+       }
        if (task.libraryId) {
           const item = d.library.find(i => i.id === task.libraryId);
           if (item) {
@@ -835,7 +831,7 @@ export default function App() {
        return d;
     });
     if (activeFlashcardTask?.id === task.id) setActiveFlashcardTask(null);
-    speak("任务完成！");
+    // 成功音效在 FlashcardGame 里已经处理了
   };
 
   if (loading) return <LoadingScreen />;
