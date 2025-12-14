@@ -6,7 +6,7 @@ import {
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
   Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
-  Puzzle, BookOpen, Star, Gift 
+  Puzzle, BookOpen, Star, Gift, PieChart, Sliders
 } from 'lucide-react';
 
 // ==========================================
@@ -28,17 +28,13 @@ const GlobalStyles = () => (
       transform: translateX(-100%) rotate(45deg);
       animation: shine 3s infinite;
     }
-    @keyframes spin-slow {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
   `}</style>
 );
 
 // ==========================================
 // --- 1. 核心引擎：本地数据库 (LocalStorage) ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_local_v10_layout';
+const STORAGE_KEY = 'go_domi_local_v11_config';
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
@@ -46,12 +42,17 @@ const LocalDB = {
   get: () => {
     try {
       const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      // 默认配置注入
+      const defaultUser = { 
+        name: '多米', level: 1, xp: 0, coins: 0, theme: 'cosmic', streak: 1, 
+        fragments: 0, 
+        pushStartHour: 19, // 默认 19点开始
+        pushEndHour: 21,   // 默认 21点结束
+        dailyLimit: 10,    // 默认每日上限 10
+        taskProbabilities: { english: 50, sport: 30, life: 20 }
+      };
       return {
-        user: { 
-          name: '多米', level: 1, xp: 0, coins: 0, theme: 'cosmic', streak: 1, 
-          fragments: 0, // 陨石碎片
-          ...data?.user 
-        },
+        user: { ...defaultUser, ...data?.user },
         tasks: Array.isArray(data?.tasks) ? data.tasks : [],
         library: Array.isArray(data?.library) ? data.library : [],
         collection: {
@@ -62,7 +63,7 @@ const LocalDB = {
       };
     } catch (e) {
       return { 
-        user: { name: '多米', level: 1, xp: 0, coins: 0, theme: 'cosmic', streak: 1, fragments: 0 }, 
+        user: { name: '多米', level: 1, xp: 0, coins: 0, theme: 'cosmic', streak: 1, fragments: 0, pushStartHour: 19, pushEndHour: 21, dailyLimit: 10 }, 
         tasks: [], library: [], collection: { puzzlePieces: [], unlockedCards: [] } 
       };
     }
@@ -94,37 +95,8 @@ const PUZZLE_CONFIG = {
 
 const SYSTEM_DICTIONARY = {
   'cat': { cn: '猫', img: '/assets/images/cat.jpg' }, 'dog': { cn: '狗', img: '/assets/images/dog.jpg' }, 
-  'pig': { cn: '猪', img: '/assets/images/pig.jpg' }, 'duck': { cn: '鸭子', img: '/assets/images/duck.jpg' },
-  'lion': { cn: '狮子', img: '/assets/images/lion.jpg' }, 'tiger': { cn: '老虎', img: '/assets/images/tiger.jpg' }, 
-  'bear': { cn: '熊', img: '/assets/images/bear.jpg' }, 'rabbit': { cn: '兔子', img: '/assets/images/rabbit.jpg' },
-  'monkey': { cn: '猴子', img: '/assets/images/monkey.jpg' }, 'panda': { cn: '熊猫', img: '/assets/images/panda.jpg' }, 
-  'bird': { cn: '鸟', img: '/assets/images/bird.jpg' }, 'fish': { cn: '鱼', img: '/assets/images/fish.jpg' },
-  'elephant': { cn: '大象', img: '/assets/images/elephant.jpg' }, 'zebra': { cn: '斑马', img: '/assets/images/zebra.jpg' }, 
-  'giraffe': { cn: '长颈鹿', img: '/assets/images/giraffe.jpg' }, 'mouse': { cn: '老鼠' }, 'horse': { cn: '马' },
-  'cow': { cn: '奶牛' }, 'sheep': { cn: '绵羊' }, 'chicken': { cn: '鸡' }, 'fox': { cn: '狐狸' }, 'wolf': { cn: '狼' },
   'apple': { cn: '苹果', img: '/assets/images/apple.jpg' }, 'banana': { cn: '香蕉', img: '/assets/images/banana.jpg' }, 
-  'orange': { cn: '橙子', img: '/assets/images/orange.jpg' }, 'grape': { cn: '葡萄', img: '/assets/images/grape.jpg' },
-  'egg': { cn: '鸡蛋', img: '/assets/images/egg.jpg' }, 'milk': { cn: '牛奶', img: '/assets/images/milk.jpg' }, 
-  'rice': { cn: '米饭', img: '/assets/images/rice.jpg' }, 'cake': { cn: '蛋糕', img: '/assets/images/cake.jpg' },
-  'ice cream': { cn: '冰淇淋', img: '/assets/images/icecream.jpg' }, 'juice': { cn: '果汁', img: '/assets/images/juice.jpg' }, 
-  'water': { cn: '水', img: '/assets/images/water.jpg' }, 'bread': { cn: '面包' }, 'candy': { cn: '糖果' },
-  'pear': { cn: '梨' }, 'peach': { cn: '桃子' }, 'tomato': { cn: '西红柿' }, 'potato': { cn: '土豆' },
-  'sun': { cn: '太阳', img: '/assets/images/sun.jpg' }, 'moon': { cn: '月亮', img: '/assets/images/moon.jpg' }, 
-  'star': { cn: '星星', img: '/assets/images/star.jpg' }, 'flower': { cn: '花', img: '/assets/images/flower.jpg' },
-  'tree': { cn: '树', img: '/assets/images/tree.jpg' }, 'book': { cn: '书', img: '/assets/images/book.jpg' }, 
-  'pen': { cn: '笔', img: '/assets/images/pen.jpg' }, 'bag': { cn: '书包', img: '/assets/images/bag.jpg' },
-  'car': { cn: '汽车', img: '/assets/images/car.jpg' }, 'bus': { cn: '公交车', img: '/assets/images/bus.jpg' }, 
-  'train': { cn: '火车', img: '/assets/images/train.jpg' }, 'plane': { cn: '飞机', img: '/assets/images/plane.jpg' }, 
-  'rocket': { cn: '火箭', img: '/assets/images/rocket.jpg' }, 'ball': { cn: '球', img: '/assets/images/ball.jpg' }, 
-  'doll': { cn: '洋娃娃', img: '/assets/images/doll.jpg' }, 'bed': { cn: '床' }, 'chair': { cn: '椅子' },
-  'table': { cn: '桌子' }, 'door': { cn: '门' }, 'window': { cn: '窗户' },
-  'red': { cn: '红色', img: '/assets/images/red.jpg' }, 'blue': { cn: '蓝色', img: '/assets/images/blue.jpg' }, 
-  'green': { cn: '绿色', img: '/assets/images/green.jpg' }, 'yellow': { cn: '黄色', img: '/assets/images/yellow.jpg' }, 
-  'black': { cn: '黑色' }, 'white': { cn: '白色' },
-  'father': { cn: '爸爸', img: '/assets/images/father.jpg' }, 'mother': { cn: '妈妈', img: '/assets/images/mother.jpg' }, 
-  'brother': { cn: '哥哥/弟弟', img: '/assets/images/brother.jpg' }, 'sister': { cn: '姐姐/妹妹', img: '/assets/images/sister.jpg' },
-  'grandfather': { cn: '爷爷/外公' }, 'grandmother': { cn: '奶奶/外婆' },
-  'head': { cn: '头', img: '/assets/images/head.jpg' }, 'eye': { cn: '眼睛' }, 'ear': { cn: '耳朵' }, 'nose': { cn: '鼻子' }, 'mouth': { cn: '嘴巴' }, 'hand': { cn: '手' }, 'foot': { cn: '脚' }
+  'head': { cn: '头', img: '/assets/images/head.jpg' }, 
 };
 
 const enrichWordTask = (wordInput) => {
@@ -169,7 +141,6 @@ const CRYSTAL_STAGES = [
 ];
 
 const REVIEW_INTERVALS = [0, 1, 2, 4, 7, 15, 30]; 
-const MAX_DAILY_TASKS = 10; 
 
 // --- Utilities ---
 const getBeijingTime = () => {
@@ -178,18 +149,26 @@ const getBeijingTime = () => {
   return new Date(utc + 8 * 3600000);
 };
 
-const isBeijingActiveWindow = () => {
+// 动态检查时间窗口
+const isBeijingActiveWindow = (startHour, endHour) => {
   const h = getBeijingTime().getHours();
-  return h >= 19 && h < 21; 
+  // 比如 start=19, end=21，则 19:00-20:59 有效
+  return h >= startHour && h < endHour; 
 };
 
-const getNextBeijingScheduleTime = () => {
+const getNextBeijingScheduleTime = (startHour = 19) => {
   const now = new Date();
   const utcNow = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const today11UTC = new Date(utcNow);
-  today11UTC.setUTCHours(11, 0, 0, 0); 
-  if (utcNow >= today11UTC.getTime()) { today11UTC.setDate(today11UTC.getDate() + 1); }
-  return today11UTC.getTime();
+  const todayTargetUTC = new Date(utcNow);
+  // 北京时间 19:00 = UTC 11:00. 偏移量 = startHour - 8
+  const targetUTCHour = startHour - 8;
+  
+  todayTargetUTC.setUTCHours(targetUTCHour, 0, 0, 0); 
+  
+  if (utcNow >= todayTargetUTC.getTime()) {
+    todayTargetUTC.setDate(todayTargetUTC.getDate() + 1);
+  }
+  return todayTargetUTC.getTime();
 };
 
 const speak = (text, isTest = false) => {
@@ -354,16 +333,6 @@ const GrowingCrystal = ({ level, xp, onClick }) => {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center relative py-12 cursor-pointer group w-full" onClick={handlePoke}>
-       {/* 增加背景六边形光环，暗示拓展逻辑 */}
-       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-80 h-80 border border-blue-500/10 rounded-full animate-[spin-slow_20s_linear_infinite]">
-             <div className="absolute top-0 left-1/2 w-2 h-2 bg-blue-400 rounded-full shadow-lg shadow-blue-400"></div>
-          </div>
-          <div className="w-60 h-60 border border-purple-500/10 rounded-full animate-[spin-slow_15s_linear_infinite_reverse]">
-             <div className="absolute bottom-0 left-1/2 w-2 h-2 bg-purple-400 rounded-full shadow-lg shadow-purple-400"></div>
-          </div>
-       </div>
-
        <div className={`absolute w-64 h-64 rounded-full blur-[80px] opacity-40 animate-pulse-slow transition-colors duration-1000 ${currentStage.color.replace('text-', 'bg-')}`}></div>
        <div className={`relative transition-all duration-300 ease-out ${isPoked ? 'scale-110 rotate-3' : ''}`} style={{ transform: isPoked ? undefined : `scale(${currentStage.scale * growthScale})` }}>
           <div className="absolute inset-0 bg-white/20 blur-xl rounded-full animate-pulse"></div>
@@ -407,7 +376,9 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
             </div>
             <div className="space-y-2 mb-8">
                <div className="text-blue-300 font-bold uppercase tracking-widest text-xs">{task.category || task.type}</div>
-               <h1 className="text-3xl font-bold text-white leading-tight">{displayTitle}</h1>
+               <h1 className="text-3xl font-bold text-white leading-tight flex flex-col items-center gap-2">
+                 {displayTitle}
+               </h1>
                <div className="inline-flex items-center gap-2 bg-yellow-400/20 text-yellow-400 px-4 py-1 rounded-full border border-yellow-400/30 mt-2">
                   <Zap size={18} fill="currentColor" />
                   <span className="font-bold text-lg">奖励 {task.reward}</span>
@@ -522,9 +493,7 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
   );
 };
 
-const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose, onDeleteTask, onUpdateProfile, onManageLibrary }) => {
-  // ... (Parent Dashboard logic same as before) ...
-  // Keeping full implementation for functionality
+const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose, onDeleteTask, onUpdateProfile, onManageLibrary, onDataChange }) => {
   const [activeTab, setActiveTab] = useState('library'); 
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskType, setNewTaskType] = useState('generic');
@@ -536,18 +505,47 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
   const [batchWords, setBatchWords] = useState(''); 
   const [textImport, setTextImport] = useState(''); 
   const [taskProbabilities, setTaskProbabilities] = useState(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
+  
+  // Config States
+  const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
+  const [pushEnd, setPushEnd] = useState(userProfile.pushEndHour || 21);
+  const [dailyLimit, setDailyLimit] = useState(userProfile.dailyLimit || 10);
+
   const pendingTasks = tasks.filter(t => t.status === 'pending');
   const upcomingTasks = libraryItems.filter(item => item.nextReview && item.nextReview > Date.now()).sort((a,b) => a.nextReview - b.nextReview);
   const completedTasks = tasks.filter(t => t.status === 'completed');
   const fileInputRef = useRef(null);
 
-  const handlePush = (e) => { e.preventDefault(); onAddTask({ title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('任务已直接推送给多米！'); };
-  const handleAddToLibrary = (e) => { e.preventDefault(); onManageLibrary('add', { title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null, memoryLevel: 0, nextReview: getNextBeijingScheduleTime() }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已添加到任务库'); };
-  const handleBatchAddWords = () => { if (!batchWords.trim()) return; const words = batchWords.split(/[,，\n]/).map(w => w.trim()).filter(w => w); const batchTime = getNextBeijingScheduleTime(); let count = 0; words.forEach(word => { const enrichedData = enrichWordTask(word); onManageLibrary('add', { title: `练习单词: ${enrichedData.word}`, type: 'english', reward: 20, flashcardData: enrichedData, memoryLevel: 0, nextReview: batchTime }); count++; }); alert(`成功生成 ${count} 个任务！`); setBatchWords(''); };
-  const handleProbChange = (type, value) => { const newVal = parseInt(value); setTaskProbabilities(prev => ({ ...prev, [type]: newVal })); };
-  const saveProbabilities = () => { onUpdateProfile({ taskProbabilities }); alert("已保存！"); };
+  const refresh = () => { if(onDataChange) onDataChange(); };
+
+  const handleSaveConfig = () => {
+    onUpdateProfile({ 
+      taskProbabilities,
+      pushStartHour: parseInt(pushStart),
+      pushEndHour: parseInt(pushEnd),
+      dailyLimit: parseInt(dailyLimit)
+    });
+    alert("配置已保存！");
+  };
+
+  const handlePush = (e) => { e.preventDefault(); onAddTask({ title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('任务已直接推送给多米！'); refresh(); };
+  const handleAddToLibrary = (e) => { e.preventDefault(); onManageLibrary('add', { title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null, memoryLevel: 0, nextReview: getNextBeijingScheduleTime(parseInt(pushStart)) }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已添加到任务库'); refresh(); };
+  
+  const handleBatchAddWords = () => {
+    if (!batchWords.trim()) return;
+    const words = batchWords.split(/[,，\n]/).map(w => w.trim()).filter(w => w);
+    const batchTime = getNextBeijingScheduleTime(parseInt(pushStart));
+    let count = 0;
+    words.forEach(word => {
+      const enrichedData = enrichWordTask(word);
+      onManageLibrary('add', { title: `练习单词: ${enrichedData.word}`, type: 'english', reward: 20, flashcardData: enrichedData, memoryLevel: 0, nextReview: batchTime });
+      count++;
+    });
+    alert(`成功生成 ${count} 个任务！`); setBatchWords(''); refresh();
+  };
+
   const handleExport = () => { const BOM = "\uFEFF"; const rows = libraryItems.map(item => `${(item.title||"").replace(/,/g,"，")},${item.type||"generic"},${item.reward||10},${item.flashcardData?.word||""}`); const blob = new Blob([BOM + "标题,类型,奖励,单词\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = "tasks.csv"; document.body.appendChild(link); link.click(); link.remove(); };
-  const handleImport = () => { try { const rows = textImport.trim().split('\n'); let count = 0; const batchTime = getNextBeijingScheduleTime(); for (let i = 0; i < rows.length; i++) { const parts = rows[i].split(','); if (parts.length < 2) continue; const title = parts[0]?.trim(); if (!title) continue; const typeRaw = parts[1]?.trim().toLowerCase(); const type = (typeRaw.includes('eng')) ? 'english' : 'generic'; onManageLibrary('add', { title, type, reward: parseInt(parts[2]?.trim())||10, flashcardData: (type === 'english' && parts[3]?.trim()) ? { word: parts[3].trim() } : null, memoryLevel: 0, nextReview: batchTime }); count++; } alert(`导入 ${count} 个`); setTextImport(''); } catch (e) { alert("格式错误"); } };
+  const handleImport = () => { try { const rows = textImport.trim().split('\n'); let count = 0; const batchTime = getNextBeijingScheduleTime(parseInt(pushStart)); for (let i = 0; i < rows.length; i++) { const parts = rows[i].split(','); if (parts.length < 2) continue; const title = parts[0]?.trim(); if (!title || title.includes("标题")) continue; const typeRaw = parts[1]?.trim().toLowerCase(); const type = (typeRaw.includes('eng')) ? 'english' : 'generic'; onManageLibrary('add', { title, type, reward: parseInt(parts[2]?.trim())||10, flashcardData: (type === 'english' && parts[3]?.trim()) ? { word: parts[3].trim() } : null, memoryLevel: 0, nextReview: batchTime }); count++; } alert(`导入 ${count} 个`); setTextImport(''); refresh(); } catch (e) { alert("格式错误"); } };
   const handleBackup = () => { const data = LocalDB.get(); const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_${Date.now()}.json`; document.body.appendChild(link); link.click(); link.remove(); };
   const handleRestore = (e) => { const file = e.target.files[0]; if(!file)return; const reader = new FileReader(); reader.onload = (ev) => { try { LocalDB.restore(JSON.parse(ev.target.result)); } catch { alert("文件错误"); } }; reader.readAsText(file); };
 
@@ -563,13 +561,34 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
              <section className="bg-white p-6 rounded-2xl shadow-sm"><div className="flex justify-between mb-4 items-center"><h3 className="font-bold">库列表 ({libraryItems.length})</h3><div className="flex gap-2"><button onClick={handleExport} className="text-xs text-blue-600"><FileDown size={14}/> 导出CSV</button></div></div><div className="space-y-2 max-h-[300px] overflow-y-auto">{libraryItems.map(i=>(<div key={i.id} className="flex justify-between p-2 border-b"><div><span className="font-bold">{i.title}</span> <span className="text-xs text-slate-400">Lv.{i.memoryLevel}</span></div><button onClick={()=>onManageLibrary('delete',i.id)} className="text-red-400"><Trash2 size={16}/></button></div>))}</div></section>
            </div>
          )}
-         {activeTab === 'plan' && <div className="bg-white p-6 rounded-2xl shadow-sm"><h3 className="font-bold mb-4"><Moon size={16} className="inline mr-2"/>今晚待推送</h3><div className="mb-4 text-xs text-slate-500 bg-slate-50 p-2 rounded">调度引擎状态：{isBeijingActiveWindow() ? '运行中 (19:00-21:00)' : '休眠中'} | 今日已发: {tasks.filter(t => new Date(t.createdAt).toDateString() === new Date().toDateString()).length}/{MAX_DAILY_TASKS}</div>{upcomingTasks.length===0?<p className="text-slate-400">无计划</p>:upcomingTasks.map(i=>(<div key={i.id} className="p-2 border-b flex justify-between"><span>{i.title}</span><span className="text-xs bg-purple-100 px-2 rounded">Lv.{i.memoryLevel}</span></div>))}</div>}
-         {activeTab === 'monitor' && <div className="bg-white p-6 rounded-2xl shadow-sm"><h3 className="font-bold mb-4">实时待办</h3>{pendingTasks.map(t=>(<div key={t.id} className="flex justify-between p-2 border-b"><span>{t.title}</span><button onClick={()=>onDeleteTask(t.id)} className="text-red-400"><XCircle size={16}/></button></div>))}</div>}
+         {activeTab === 'plan' && <div className="bg-white p-6 rounded-2xl shadow-sm"><h3 className="font-bold mb-4"><Moon size={16} className="inline mr-2"/>待推送队列 (排队中)</h3><div className="mb-4 text-xs text-slate-500 bg-slate-50 p-2 rounded">调度引擎状态：{isBeijingActiveWindow(parseInt(pushStart), parseInt(pushEnd)) ? `运行中 (${pushStart}:00-${pushEnd}:00)` : `休眠中 (下次 ${pushStart}:00 启动)`} | 今日已发: {tasks.filter(t => new Date(t.createdAt).toDateString() === new Date().toDateString()).length}/{dailyLimit}</div>{upcomingTasks.length===0?<p className="text-slate-400">无计划</p>:upcomingTasks.map(i=>(<div key={i.id} className="p-2 border-b flex justify-between"><span>{i.title}</span><span className="text-xs bg-purple-100 px-2 rounded">Lv.{i.memoryLevel}</span></div>))}</div>}
+         {activeTab === 'monitor' && <div className="bg-white p-6 rounded-2xl shadow-sm"><h3 className="font-bold mb-4 text-orange-600">当前待办 (孩子可见)</h3>{pendingTasks.length === 0 ? <p className="text-slate-400 py-4">目前没有积压的任务</p> : pendingTasks.map(t=>(<div key={t.id} className="flex justify-between p-2 border-b"><span>{t.title}</span><button onClick={()=>onDeleteTask(t.id)} className="text-red-400 text-xs border border-red-200 px-2 py-1 rounded">撤回</button></div>))}</div>}
          {activeTab === 'history' && <div className="bg-white p-6 rounded-2xl shadow-sm"><h3 className="font-bold mb-4">完成记录</h3>{completedTasks.map(t=>(<div key={t.id} className="flex justify-between p-2 border-b text-sm"><span className="text-slate-700">{t.title}</span><span className="text-green-600">{formatTime(t.completedAt)}</span></div>))}</div>}
          {activeTab === 'config' && (
             <div className="space-y-6">
+              <section className="bg-white p-6 rounded-2xl shadow-sm">
+                <h3 className="font-bold mb-4 flex items-center gap-2"><Sliders size={18}/> 调度配置</h3>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div><label className="text-xs text-slate-500">推送开始时间 (点)</label><input type="number" className="w-full p-2 border rounded" value={pushStart} onChange={e=>setPushStart(e.target.value)} /></div>
+                  <div><label className="text-xs text-slate-500">推送结束时间 (点)</label><input type="number" className="w-full p-2 border rounded" value={pushEnd} onChange={e=>setPushEnd(e.target.value)} /></div>
+                  <div className="col-span-2"><label className="text-xs text-slate-500">每日最大任务量</label><input type="number" className="w-full p-2 border rounded" value={dailyLimit} onChange={e=>setDailyLimit(e.target.value)} /></div>
+                </div>
+                
+                <div className="border-t pt-4">
+                  <label className="text-xs text-slate-500 mb-2 block">随机生成概率 (当任务库空时)</label>
+                  {['english', 'sport', 'life'].map(type => (
+                    <div key={type} className="flex items-center gap-2 mb-2">
+                       <span className="text-xs w-16 capitalize">{type}</span>
+                       <input type="range" className="flex-1" min="0" max="100" value={taskProbabilities[type]} onChange={e => setTaskProbabilities(p => ({...p, [type]: parseInt(e.target.value)}))} />
+                       <span className="text-xs w-8">{taskProbabilities[type]}%</span>
+                    </div>
+                  ))}
+                </div>
+
+                <button onClick={handleSaveConfig} className="w-full mt-4 py-2 bg-slate-800 text-white rounded font-bold">保存配置</button>
+              </section>
+              
               <section className="bg-white p-6 rounded-2xl shadow-sm"><h3 className="font-bold mb-4">数据备份</h3><div className="grid grid-cols-2 gap-3"><button onClick={handleBackup} className="p-3 bg-slate-100 rounded text-xs font-bold flex items-center justify-center gap-2"><FileDown size={16}/> 备份</button><button onClick={()=>fileInputRef.current.click()} className="p-3 bg-slate-100 rounded text-xs font-bold flex items-center justify-center gap-2"><FileUp size={16}/> 恢复</button><input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div></section>
-              <section className="bg-white p-6 rounded-2xl shadow-sm"><h3 className="font-bold mb-4">工具</h3><button onClick={()=>speak("测试语音正常", true)} className="w-full py-3 bg-slate-100 text-slate-700 rounded font-bold">🔊 测试语音</button></section>
             </div>
          )}
        </div>
@@ -577,7 +596,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
   );
 };
 
-// --- 重构：社交验证版游戏模块 (图文模式 + 乘法验证) ---
+// --- 重构：社交验证版游戏模块 (极简版 + 乘法验证) ---
 const FlashcardGame = ({ task, onClose, onComplete }) => {
   const [step, setStep] = useState('learning'); 
   const [imageError, setImageError] = useState(false);
@@ -594,7 +613,7 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
 
   useEffect(() => { if (step === 'learning') setTimeout(playWord, 500); }, [step, word]);
 
-  // 生成乘法题：3-9 之间的乘法
+  // 生成乘法题
   const generateMath = () => {
     const a = Math.floor(Math.random() * 7) + 3; 
     const b = Math.floor(Math.random() * 7) + 3;
@@ -602,7 +621,7 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
     setMathAns('');
   };
 
-  // 点击“我去教爷爷奶奶” -> 直接进入验证模式
+  // 点击“我去教爷爷奶奶” -> 直接显示验证
   const handleGoTeach = () => {
     setStep('challenge');
     generateMath();
@@ -707,7 +726,7 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
                              确认
                            </button>
                         </div>
-                        <div className="text-[10px] text-slate-400 text-right mt-1">* 家长验证区</div>
+                        <div className="text-[10px] text-slate-400 text-right mt-1">* 请家长验证完成后输入答案</div>
                      </div>
                      
                      <button onClick={() => setStep('learning')} className="text-sm text-slate-400 underline">还没学会？回去再看看</button>
@@ -746,11 +765,13 @@ export default function App() {
       const now = Date.now();
       const currentTasks = data.tasks.filter(t => t.status === 'pending');
       
-      if (!isBeijingActiveWindow()) return; 
+      const { pushStartHour, pushEndHour, dailyLimit } = data.user;
+      
+      if (!isBeijingActiveWindow(pushStartHour, pushEndHour)) return; 
       if (currentTasks.length > 0) return; 
 
       const todayCount = data.tasks.filter(t => new Date(t.createdAt).toDateString() === new Date().toDateString()).length;
-      if (todayCount >= MAX_DAILY_TASKS) return;
+      if (todayCount >= dailyLimit) return;
 
       const dueItem = data.library.sort((a,b)=>a.nextReview-b.nextReview).find(i => i.nextReview <= now);
       const activeLibIds = new Set(currentTasks.map(t => t.libraryId));
@@ -770,6 +791,8 @@ export default function App() {
     return () => clearInterval(scheduler);
   }, [data]);
 
+  // ... (Other handlers like handleAddTask, handleStartPatrol same as before)
+  // Re-implementing simplified handlers for context
   const handleAddTask = (d) => LocalDB.update(s => { 
     if (!Array.isArray(s.tasks)) s.tasks = [];
     s.tasks.push({ ...d, id: generateId(), status: 'pending', createdAt: Date.now() }); 
@@ -784,8 +807,9 @@ export default function App() {
   });
   
   const handleDeleteTask = (id) => LocalDB.update(s => { s.tasks = s.tasks.filter(t=>t.id!==id); return s; });
-  const handleUpdateProfile = (d) => LocalDB.update(s => { s.user = { ...s.user, ...d }; return s; });
   
+  const handleUpdateProfile = (d) => LocalDB.update(s => { s.user = { ...s.user, ...d }; return s; });
+
   const handleStartPatrol = () => {
     setIsPatrolling(true); speak("雷达启动！");
     setTimeout(() => {
@@ -825,11 +849,9 @@ export default function App() {
 
   const handleComplete = (task) => {
     let earnedRewards = { coins: task.reward, xp: task.reward };
-    
-    // 随机掉落逻辑
     const roll = Math.random();
-    if (roll < 0.2) earnedRewards.fragment = 1; // 20% 几率掉落碎片
-    if (roll < 0.1 && task.type === 'english') earnedRewards.puzzlePiece = true; // 10% 几率掉落拼图
+    if (roll < 0.2) earnedRewards.fragment = 1; 
+    if (roll < 0.1 && task.type === 'english') earnedRewards.puzzlePiece = true; 
     
     LocalDB.update(d => {
        const t = d.tasks.find(x => x.id === task.id);
@@ -837,7 +859,6 @@ export default function App() {
        d.user.xp += task.reward; d.user.coins += task.reward;
        if (earnedRewards.fragment) d.user.fragments = (d.user.fragments || 0) + 1;
        
-       // 更新收集
        if (task.type === 'english' && task.flashcardData) {
           const word = task.flashcardData.word;
           const exists = d.collection?.unlockedCards?.find(c => c.word === word);
@@ -846,11 +867,9 @@ export default function App() {
             d.collection.unlockedCards.push({ word, cn: task.flashcardData.translation });
           }
        }
-       // 拼图逻辑
        if (earnedRewards.puzzlePiece) {
           if (!d.collection) d.collection = { puzzlePieces: [] };
           if (!d.collection.puzzlePieces) d.collection.puzzlePieces = [];
-          // 随机获得一个未拥有的碎片
           const allPieces = [0,1,2,3,4,5,6,7,8];
           const owned = d.collection.puzzlePieces;
           const missing = allPieces.filter(p => !owned.includes(p));
@@ -859,7 +878,7 @@ export default function App() {
              d.collection.puzzlePieces.push(newPiece);
              earnedRewards.puzzlePieceIndex = newPiece;
           } else {
-             earnedRewards.puzzlePiece = false; // 已集齐
+             earnedRewards.puzzlePiece = false; 
           }
        }
        
@@ -867,7 +886,7 @@ export default function App() {
           const item = d.library.find(i => i.id === task.libraryId);
           if (item) {
              const lv = item.memoryLevel || 0; const nextLv = Math.min(lv + 1, 6);
-             const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + REVIEW_INTERVALS[nextLv]); nextDate.setHours(19,0,0,0);
+             const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + REVIEW_INTERVALS[nextLv]); nextDate.setHours(data.user.pushStartHour || 19,0,0,0);
              item.memoryLevel = nextLv; item.nextReview = nextDate.getTime();
           }
        }
@@ -879,7 +898,6 @@ export default function App() {
   };
 
   if (loading) return <LoadingScreen />;
-
   const pendingTasks = (data.tasks || []).filter(t => t.status === 'pending');
 
   return (
@@ -894,7 +912,7 @@ export default function App() {
           onStartPatrol={handleStartPatrol} isPatrolling={isPatrolling} isPlaying={!!activeFlashcardTask} 
           onOpenCollection={() => setShowCollection(true)}
         />
-        {isParentMode && <ParentDashboard userProfile={data.user} tasks={data.tasks} libraryItems={data.library} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} onUpdateProfile={handleUpdateProfile} onManageLibrary={handleManageLibrary} onClose={() => setIsParentMode(false)} />}
+        {isParentMode && <ParentDashboard userProfile={data.user} tasks={data.tasks} libraryItems={data.library} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} onUpdateProfile={handleUpdateProfile} onManageLibrary={handleManageLibrary} onClose={() => setIsParentMode(false)} onDataChange={() => setData(LocalDB.get())} />}
         {activeFlashcardTask && <FlashcardGame task={activeFlashcardTask} onClose={() => setActiveFlashcardTask(null)} onComplete={handleComplete} />}
         {rewardData && <RewardModal rewards={rewardData} onClose={() => setRewardData(null)} />}
         {showCollection && <CollectionModal collection={data.collection || {}} onClose={() => setShowCollection(false)} />}
