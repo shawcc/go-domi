@@ -5,7 +5,7 @@ import {
   Rocket, Zap, Loader2, Activity, BrainCircuit, History, ListTodo, 
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
-  Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock
+  Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock, Radio
 } from 'lucide-react';
 
 // ==========================================
@@ -251,26 +251,7 @@ const LoadingScreen = () => (
   </div>
 );
 
-// 动态背景 + 本地背景图支持
-const DynamicBackground = ({ themeId, customBg }) => {
-  const [bgError, setBgError] = useState(false);
-
-  // 如果配置了自定义背景且没有加载失败，显示自定义背景
-  if (customBg && !bgError) {
-    return (
-      <div className="absolute inset-0 z-0">
-        <img 
-          src={customBg} 
-          alt="background" 
-          className="w-full h-full object-cover opacity-60" 
-          onError={() => setBgError(true)}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 to-slate-900/90"></div>
-      </div>
-    );
-  }
-
-  // 默认动态背景
+const DynamicBackground = ({ themeId }) => {
   if (themeId === 'forest') {
     return (
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -354,12 +335,35 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
             <Siren size={28} className="animate-bounce" />
           </div>
           <div className="p-8 flex flex-col items-center text-center">
-            <div className="mb-6 relative">
-              <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full"></div>
-              {isEnglish ? <div className="w-24 h-24 bg-purple-500 rounded-full flex items-center justify-center text-5xl relative z-10 border-4 border-white/20 shadow-xl">A</div> : <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center text-5xl relative z-10 border-4 border-white/20 shadow-xl">⚔️</div>}
+            
+            {/* IP 主角头像 (强化代入感) */}
+            <div className="mb-6 relative group">
+              <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full group-hover:bg-blue-400/30 transition-all"></div>
+              <div className="w-32 h-32 bg-slate-900 rounded-full flex items-center justify-center relative z-10 border-4 border-blue-400/50 shadow-[0_0_30px_rgba(59,130,246,0.5)] overflow-hidden">
+                 <div className="absolute inset-0 opacity-50 bg-[radial-gradient(circle_at_30%_30%,_rgba(255,255,255,0.2),_transparent)]"></div>
+                 {/* 优先显示配置的主角图片，没有则显示通用图标 */}
+                 {currentTheme.mascot.startsWith('/') ? (
+                    <img 
+                      src={currentTheme.mascot} 
+                      alt="Commander" 
+                      className="w-full h-full object-cover transform scale-110"
+                      onError={(e) => { e.target.style.display='none'; }} 
+                    />
+                 ) : null}
+                 {/* 兜底图标 */}
+                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10">
+                    {isEnglish ? <span className="text-5xl">A</span> : <span className="text-5xl">🚀</span>}
+                 </div>
+              </div>
+              <div className="absolute -bottom-3 -right-2 bg-blue-600 text-white px-3 py-0.5 rounded-full text-[10px] font-bold border border-blue-400 uppercase tracking-widest shadow-lg">
+                Incoming
+              </div>
             </div>
+
             <div className="space-y-2 mb-8">
-               <div className="text-blue-300 font-bold uppercase tracking-widest text-xs">{task.category || task.type}</div>
+               <div className="flex items-center justify-center gap-2 text-blue-300 text-xs font-bold uppercase tracking-widest animate-pulse">
+                  <Radio size={14} /> 来自 {currentTheme.assistant} 的信号...
+               </div>
                <h1 className="text-3xl font-bold text-white leading-tight flex flex-col items-center gap-2">
                  {displayTitle}
                </h1>
@@ -386,13 +390,12 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
   const displayTasks = tasks.filter(t => t.status === 'pending' && !hiddenTaskIds.has(t.id));
   const nextLevelXp = userProfile.level * 100;
   const progressPercent = Math.min((userProfile.xp / nextLevelXp) * 100, 100);
-  // 智能头像处理：优先本地图片，失败回退到火箭图标
-  const [mascotError, setMascotError] = useState(false);
+  const isImgMascot = currentTheme.mascot.startsWith('/');
   const streakDays = userProfile.streak || 1;
 
   return (
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} transition-colors duration-500 relative overflow-hidden flex flex-col`}>
-      <DynamicBackground themeId={currentTheme.id} customBg={currentTheme.backgroundImage} />
+      <DynamicBackground themeId={currentTheme.id} />
       
       {/* 巡逻动画 */}
       {isPatrolling && (
@@ -405,10 +408,10 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
       <div className="w-full relative z-10 p-4 flex justify-between items-center bg-black/20 backdrop-blur-md shadow-md border-b border-white/5">
         <div className="flex items-center gap-3">
           <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center overflow-hidden border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]">
-             {!mascotError ? (
-               <img src={currentTheme.mascot} alt="mascot" className="w-full h-full object-cover" onError={() => setMascotError(true)} />
-             ) : (
+             {!isImgMascot ? (
                <Rocket className="text-yellow-400" size={32} />
+             ) : (
+               <img src={currentTheme.mascot} alt="mascot" className="w-full h-full object-cover" onError={(e) => e.target.style.display = 'none'} />
              )}
           </div>
           <div>
