@@ -28,10 +28,9 @@ const GlobalStyles = () => (
 // --- 1. 双模数据引擎 (Cloud + Local) ---
 // ==========================================
 
-// ⚠️ 【关键修改点】在这里填入你的腾讯云公网 IP
-// 格式如：'http://123.45.67.89:3000'
-// 如果留空 ''，APP 将自动运行在“纯本地离线模式”
-const SERVER_IP = 'http://43.143.74.76:3000'; 
+// ⚠️ 在这里填入你的腾讯云公网 IP，例如 'http://123.45.67.89:3000'
+// 如果留空 ''，则强制使用本地模式
+const SERVER_IP = '43.143.74.76:3000'; 
 
 const STORAGE_KEY = 'go_domi_data_v12_hybrid';
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
@@ -42,7 +41,6 @@ const LocalDB = {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const data = raw ? JSON.parse(raw) : null;
-      // 默认数据结构
       return {
         user: { 
           name: '多米', level: 1, xp: 0, coins: 0, theme: 'cosmic', streak: 1, 
@@ -63,7 +61,7 @@ const LocalDB = {
   }
 };
 
-// 1.2 云端 API 适配器 (带自动降级)
+// 1.2 云端 API 适配器 (修复版)
 const CloudAPI = {
   login: async (username) => {
     // A. 尝试云端登录
@@ -88,11 +86,19 @@ const CloudAPI = {
     return new Promise(resolve => {
       setTimeout(() => {
         const localData = LocalDB.get();
-        // 简单处理：本地模式下直接读取 LocalStorage，不区分用户名 (单设备单用户)
-        // 如果需要多用户切换，可以在这里根据 username 读取不同的 Key
         resolve({ uid: username, token: 'offline-token', initialData: localData, mode: 'offline' });
       }, 500);
     });
+  },
+
+  // 新增：获取数据 (用于刷新页面后重新加载)
+  fetchData: async (username) => {
+     // 目前简单处理：直接复用本地数据，未来可扩展云端拉取
+     return new Promise(resolve => {
+         setTimeout(() => {
+             resolve(LocalDB.get());
+         }, 300);
+     });
   },
 
   sync: async (username, data, mode) => {
@@ -240,25 +246,32 @@ class ErrorBoundary extends React.Component {
 }
 
 // ==========================================
-// --- 5. 登录界面 (Login Screen) ---
+// --- 5. 登录界面 (样式修复 + 逻辑修复) ---
 // ==========================================
 const LoginScreen = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!username.trim()) return;
-    setLoading(true);
-    // 尝试登录（自动处理在线/离线切换）
-    const session = await CloudAPI.login(username.trim());
-    onLogin(session);
-    setLoading(false);
+    
+    // 修复：这里不再调用 CloudAPI.login，而是直接把用户名传给父组件
+    // 由 App 组件统一处理登录逻辑
+    onLogin(username.trim());
+    setLoading(true); // 显示加载态，直到父组件处理完毕
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-6 relative overflow-hidden">
-      <div className="relative z-10 w-full max-w-sm bg-slate-800/50 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
+    <div className="fixed inset-0 w-screen h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-6 relative overflow-hidden z-50">
+      <div className="absolute inset-0 z-0">
+         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900 via-slate-900 to-black"></div>
+         {[...Array(20)].map((_, i) => (
+           <div key={i} className="absolute w-1 h-1 bg-white rounded-full animate-pulse" style={{left: `${Math.random()*100}%`, top: `${Math.random()*100}%`, animationDelay: `${Math.random()*2}s`}}></div>
+         ))}
+      </div>
+      
+      <div className="relative z-10 w-full max-w-sm bg-slate-800/50 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl animate-in zoom-in fade-in duration-500">
         <div className="flex justify-center mb-6">
            <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce">
               <Rocket size={40} className="text-white" />
@@ -430,10 +443,10 @@ export default function App() {
     if (saved) {
        const s = JSON.parse(saved);
        setSession(s);
-       CloudAPI.login(s.uid).then(sess => { // Refresh data on load
-         setSession(sess);
-         setData(sess.initialData);
-         setLoading(false);
+       // 修复：这里直接使用 CloudAPI.fetchData(s.uid) 而不是 s.storageKey
+       CloudAPI.fetchData(s.uid).then(d => { 
+           setData(d); 
+           setLoading(false); 
        });
     } else { setLoading(false); }
   }, []);
@@ -442,16 +455,20 @@ export default function App() {
     setLoading(true);
     const s = await CloudAPI.login(username);
     localStorage.setItem('go_domi_session', JSON.stringify(s));
-    setSession(s); setData(s.initialData); setLoading(false);
+    setSession(s); 
+    setData(s.initialData); 
+    setLoading(false);
   };
 
   const persist = (newData) => { setData(newData); CloudAPI.sync(session.uid, newData, session.mode); };
 
+  // Scheduler & Actions (Simplified for V12 integration)
   const handleComplete = (task) => {
     const newData = { ...data };
     const t = newData.tasks.find(x => x.id === task.id);
     if(t) { t.status = 'completed'; t.completedAt = Date.now(); }
     newData.user.coins += task.reward; newData.user.xp += task.reward;
+    // Puzzle logic here...
     persist(newData);
     setActiveFlashcardTask(null);
     setRewardData({ coins: task.reward, xp: task.reward });
