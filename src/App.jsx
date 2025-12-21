@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// --- 0. 基础配置与全局样式 ---
+// --- 0. 基础配置 ---
 // ==========================================
 
 // ⚠️ 生产环境配置: 
@@ -144,7 +144,7 @@ const CloudAPI = {
     const endpoint = getApiEndpoint('/api/login');
     try {
       const controller = new AbortController();
-      setTimeout(() => controller.abort(), 8000); // 增加超时时间
+      setTimeout(() => controller.abort(), 8000); 
       const res = await fetch(endpoint, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' },
@@ -160,7 +160,6 @@ const CloudAPI = {
       }
     } catch (e) { console.warn("Cloud login failed:", e); }
     
-    // 降级提示
     return { uid: username, token: 'offline', initialData: LocalDB.get(), mode: 'offline', warning: '无法连接云端，已切换至本地离线模式。请检查 vercel.json 配置或服务器状态。' };
   },
   fetchData: async (username) => {
@@ -182,7 +181,6 @@ const CloudAPI = {
   sync: async (username, data, mode) => {
     LocalDB.save(data);
     const endpoint = getApiEndpoint('/api/sync');
-    // 即使当前是 offline，如果用户强制同步，我们也会尝试发送请求
     if (mode === 'cloud' || mode === 'force') {
       try { await fetch(endpoint, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username, data }) }); } catch (e) { console.error("Sync failed", e); }
     }
@@ -269,8 +267,7 @@ const speakEnglish = (text) => {
 };
 const playTaskAudio = (text, audioUrl) => {
   if (audioUrl) {
-    const safeUrl = proxifyUrl(audioUrl);
-    const audio = new Audio(safeUrl);
+    const audio = new Audio(audioUrl);
     audio.play().catch(() => speakEnglish(text));
   } else speakEnglish(text);
 };
@@ -300,14 +297,8 @@ const LoginScreen = ({ onLogin }) => {
     setErrorMsg('');
     try {
       const session = await CloudAPI.login(username.trim());
-      // 如果降级了，给出明确提示
-      if (session.mode === 'offline') {
-         setErrorMsg("⚠️ 离线模式：无法连接服务器。数据将仅保存在本机。");
-         // 延迟进入，让用户看到提示
-         setTimeout(() => onLogin(session), 2000);
-      } else {
-         onLogin(session);
-      }
+      if (session.warning) alert(session.warning);
+      onLogin(session);
     } catch(e) { 
       setErrorMsg(e.message);
       setLoading(false); 
@@ -437,6 +428,8 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
 const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose, onDeleteTask, onUpdateProfile, onManageLibrary, onDataChange, sessionUid, onForceSync }) => {
     const [activeTab, setActiveTab] = useState('library'); 
     const [saveStatus, setSaveStatus] = useState(''); 
+    
+    // Form States
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [newTaskType, setNewTaskType] = useState('generic');
     const [newTaskReward, setNewTaskReward] = useState(20);
@@ -446,15 +439,22 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const [flashcardAudio, setFlashcardAudio] = useState('');
     const [batchWords, setBatchWords] = useState('');
     const [uploading, setUploading] = useState(false);
+    
+    // Config states
     const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
     const [pushEnd, setPushEnd] = useState(userProfile.pushEndHour || 21);
     const [dailyLimit, setDailyLimit] = useState(userProfile.dailyLimit || 10);
     const [taskProbabilities, setTaskProbabilities] = useState(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
+    
+    // Theme States
     const [themeMascot, setThemeMascot] = useState(userProfile.themeConfig?.mascot || '');
     const [themeBg, setThemeBg] = useState(userProfile.themeConfig?.background || '');
     const [assistantName, setAssistantName] = useState(userProfile.themeConfig?.assistantName || '');
+    
     const mascotInputRef = useRef(null);
     const bgInputRef = useRef(null);
+    const fileInputRef = useRef(null);
+
     const safeTasks = Array.isArray(tasks) ? tasks : [];
     const safeLibrary = Array.isArray(libraryItems) ? libraryItems : [];
     const pendingTasks = safeTasks.filter(t => t.status === 'pending');
@@ -462,25 +462,89 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const upcomingTasks = safeLibrary.filter(item => item.nextReview && item.nextReview > Date.now()).sort((a,b) => a.nextReview - b.nextReview);
 
     const refresh = () => { if(onDataChange) onDataChange(); };
-    const handleUpload = async (e, type) => { const file = e.target.files[0]; if(!file)return; setUploading(true); try { const url = await CloudAPI.upload(file); if (type === 'mascot') setThemeMascot(url); if (type === 'bg') setThemeBg(url); alert("上传成功!"); } catch (err) { alert(err.message); } finally { setUploading(false); } };
-    const handleSaveTheme = () => { onUpdateProfile({ themeConfig: { mascot: themeMascot, background: themeBg, assistantName: assistantName } }); setSaveStatus('theme'); setTimeout(() => setSaveStatus(''), 2000); alert("✅ 主题已更新！"); };
+
+    const handleUpload = async (e, type) => {
+       const file = e.target.files[0];
+       if(!file) return;
+       setUploading(true);
+       try {
+         const url = await CloudAPI.upload(file);
+         if (type === 'mascot') setThemeMascot(url);
+         if (type === 'bg') setThemeBg(url);
+         alert("上传成功!");
+       } catch (err) { alert(err.message); } finally { setUploading(false); }
+    };
+
+    const handleSaveTheme = () => {
+      onUpdateProfile({ 
+        themeConfig: {
+          mascot: themeMascot,
+          background: themeBg,
+          assistantName: assistantName
+        }
+      });
+      setSaveStatus('theme');
+      setTimeout(() => setSaveStatus(''), 2000);
+      alert("✅ 主题已更新！");
+    };
+
     const handlePush = (e) => { e.preventDefault(); onAddTask({ title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), image: newTaskType==='generic'?flashcardImg:undefined, flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已推送'); refresh(); };
     const handleAddToLibrary = (e) => { e.preventDefault(); onManageLibrary('add', { title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), image: newTaskType==='generic'?flashcardImg:undefined, flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null, memoryLevel: 0, nextReview: getNextBeijingScheduleTime(parseInt(pushStart)) }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已添加到库'); refresh(); };
     const handleBatchAddWords = () => { if (!batchWords.trim()) return; const words = batchWords.split(/[,，\n]/).map(w => w.trim()).filter(w => w); const batchTime = getNextBeijingScheduleTime(parseInt(pushStart)); let count = 0; words.forEach(word => { const enrichedData = enrichWordTask(word); onManageLibrary('add', { title: `练习单词: ${enrichedData.word}`, type: 'english', reward: 20, flashcardData: enrichedData, memoryLevel: 0, nextReview: batchTime }); count++; }); alert(`成功生成 ${count} 个任务！`); setBatchWords(''); refresh(); };
     const handleSaveConfig = () => { onUpdateProfile({ taskProbabilities, pushStartHour: parseInt(pushStart), pushEndHour: parseInt(pushEnd), dailyLimit: parseInt(dailyLimit) }); alert("保存成功"); };
+    
     const handleExport = () => { const BOM = "\uFEFF"; const rows = safeLibrary.map(item => `${(item.title||"").replace(/,/g,"，")},${item.type||"generic"},${item.reward||10},${item.flashcardData?.word||""}`); const blob = new Blob([BOM + "标题,类型,奖励,单词\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = "tasks.csv"; document.body.appendChild(link); link.click(); link.remove(); };
     const handleBackup = () => { const data = LocalDB.get(); const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_${Date.now()}.json`; document.body.appendChild(link); link.click(); link.remove(); };
     const handleRestore = (e) => { const file = e.target.files[0]; if(!file)return; const reader = new FileReader(); reader.onload = (ev) => { try { LocalDB.restore(JSON.parse(ev.target.result)); } catch { alert("文件错误"); } }; reader.readAsText(file); };
+    
     const handleLogout = () => { if(confirm("确定要退出登录吗？")) window.location.reload(); };
 
     return (<div className="fixed inset-0 bg-slate-100 z-50 p-4 overflow-y-auto">
       <div className="flex justify-between mb-4"><h2 className="font-bold text-slate-800">家长后台</h2><button onClick={onClose}><XCircle/></button></div>
       <div className="flex gap-2 mb-4 overflow-x-auto">{['library','theme','config','plan','monitor'].map(t=><button key={t} onClick={()=>setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold capitalize whitespace-nowrap ${activeTab===t?'bg-blue-600 text-white':'bg-white text-slate-600'}`}>{t}</button>)}</div>
-      {activeTab==='library' && <div className="space-y-6"><div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><h3 className="font-bold mb-2 flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3><textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词..."/><button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成</button></div><div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-slate-300"><h3 className="font-bold mb-4">手动添加任务</h3><div className="flex gap-2 mb-3"><button onClick={()=>setNewTaskType('generic')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='generic'?'bg-slate-200':''}`}>通用</button><button onClick={()=>setNewTaskType('english')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='english'?'bg-purple-100 text-purple-700':''}`}>英语</button></div><div className="space-y-3"><div className="flex gap-2"><input className="flex-1 border p-2 rounded" value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)} placeholder="名称"/><input className="w-20 border p-2 rounded" type="number" value={newTaskReward} onChange={e=>setNewTaskReward(e.target.value)} placeholder="奖励"/></div>{newTaskType === 'english' && <div className="bg-purple-50 p-3 rounded space-y-2"><div className="flex gap-2"><input className="flex-1 border p-2 rounded text-sm" placeholder="单词" value={flashcardWord} onChange={e=>setFlashcardWord(e.target.value)}/><input className="flex-1 border p-2 rounded text-sm" placeholder="中文" value={flashcardTrans} onChange={e=>setFlashcardTrans(e.target.value)}/></div></div>}<div className="flex gap-2"><button onClick={handleAddToLibrary} className="flex-1 bg-slate-100 py-3 rounded-lg font-bold">入库</button><button onClick={handlePush} className="flex-1 bg-slate-800 text-white py-3 rounded-lg font-bold">推送</button></div></div></div></div>}
-      {activeTab==='theme' && <div className="bg-white p-4 rounded shadow space-y-4"><h3 className="font-bold flex items-center gap-2"><Palette size={18}/> 主题定制</h3><div className="space-y-4"><div><label className="text-xs text-slate-500 block mb-1">队长头像</label><div className="flex gap-2"><input className="border flex-1 p-2 rounded text-sm" value={themeMascot} onChange={e=>setThemeMascot(e.target.value)} placeholder="URL"/><button disabled={uploading} onClick={()=>mascotInputRef.current.click()} className="bg-slate-200 px-3 rounded"><Upload size={16}/></button></div><input type="file" ref={mascotInputRef} className="hidden" accept="image/*" onChange={(e)=>handleUpload(e,'mascot')}/></div><div><label className="text-xs text-slate-500 block mb-1">背景图片</label><div className="flex gap-2"><input className="border flex-1 p-2 rounded text-sm" value={themeBg} onChange={e=>setThemeBg(e.target.value)} placeholder="URL"/><button disabled={uploading} onClick={()=>bgInputRef.current.click()} className="bg-slate-200 px-3 rounded"><Upload size={16}/></button></div><input type="file" ref={bgInputRef} className="hidden" accept="image/*" onChange={(e)=>handleUpload(e,'bg')}/></div></div><button onClick={handleSaveTheme} className="w-full bg-green-600 text-white py-3 rounded font-bold">保存主题</button></div>}
-      {activeTab==='config' && <div className="bg-white p-4 rounded shadow space-y-6"><h3 className="font-bold">调度配置</h3><div className="grid grid-cols-2 gap-4"><div><label className="text-xs text-slate-500">开始</label><input className="border w-full p-2 rounded" type="number" value={pushStart} onChange={e=>setPushStart(e.target.value)}/></div><div><label className="text-xs text-slate-500">结束</label><input className="border w-full p-2 rounded" type="number" value={pushEnd} onChange={e=>setPushEnd(e.target.value)}/></div></div><button onClick={handleSaveConfig} className="bg-slate-800 text-white w-full py-3 rounded font-bold">保存配置</button><div className="border-t pt-4 grid grid-cols-2 gap-3"><button onClick={handleBackup} className="p-3 bg-slate-100 rounded text-xs font-bold">备份</button><button onClick={()=>fileInputRef.current.click()} className="p-3 bg-slate-100 rounded text-xs font-bold">恢复</button><input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div><div className="pt-4 border-t flex justify-between"><button onClick={onForceSync} className="text-blue-600 text-xs flex gap-1"><Cloud size={14}/> 强制覆盖云端数据</button><button onClick={handleLogout} className="text-red-500 text-xs">退出</button></div></div>}
-      {activeTab==='plan' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">待推送</h3>{upcomingTasks.map(i=><div key={i.id} className="p-2 border-b text-sm">{i.title}</div>)}</div>}
-      {activeTab==='monitor' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">实时</h3>{pendingTasks.map(t=><div key={t.id} className="p-2 border-b flex justify-between items-center"><span className="text-sm">{t.title}</span><button onClick={()=>onDeleteTask(t.id)} className="text-red-500 text-xs">撤回</button></div>)}</div>}
+      
+      {activeTab==='library' && <div className="space-y-6">
+         <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><h3 className="font-bold mb-2 flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3><textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词，逗号分隔 (如: apple, banana)"/><button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成</button></div>
+         <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-slate-300">
+           <h3 className="font-bold mb-4">手动添加任务</h3>
+           <div className="flex gap-2 mb-3"><button onClick={()=>setNewTaskType('generic')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='generic'?'bg-slate-200 border-slate-400':''}`}>通用任务</button><button onClick={()=>setNewTaskType('english')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='english'?'bg-purple-100 border-purple-400 text-purple-700':''}`}>英语任务</button></div>
+           <div className="space-y-3">
+             <div className="flex gap-2"><input className="flex-1 border p-2 rounded" value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)} placeholder="任务名称 (必填)" /><input className="w-20 border p-2 rounded" type="number" value={newTaskReward} onChange={e=>setNewTaskReward(e.target.value)} placeholder="奖励" /></div>
+             {newTaskType === 'english' && <div className="bg-purple-50 p-3 rounded border border-purple-100 space-y-2"><div className="flex gap-2"><input className="flex-1 border p-2 rounded text-sm" placeholder="英文单词" value={flashcardWord} onChange={e=>setFlashcardWord(e.target.value)} /><input className="flex-1 border p-2 rounded text-sm" placeholder="中文释义" value={flashcardTrans} onChange={e=>setFlashcardTrans(e.target.value)} /></div><input className="w-full border p-2 rounded text-sm" placeholder="图片 URL" value={flashcardImg} onChange={e=>setFlashcardImg(e.target.value)} /><input className="w-full border p-2 rounded text-sm" placeholder="发音 URL" value={flashcardAudio} onChange={e=>setFlashcardAudio(e.target.value)} /></div>}
+             {newTaskType === 'generic' && <input className="w-full border p-2 rounded text-sm" placeholder="图片 URL (选填)" value={flashcardImg} onChange={e=>setFlashcardImg(e.target.value)} />}
+             <div className="flex gap-2"><button onClick={handleAddToLibrary} className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-bold">加入计划库</button><button onClick={handlePush} className="flex-1 bg-slate-800 text-white py-3 rounded-lg font-bold">立即推送</button></div>
+           </div>
+         </div>
+         <div className="bg-white p-4 rounded-xl shadow-sm"><div className="flex justify-between items-center mb-4"><h3 className="font-bold">任务库 ({safeLibrary.length})</h3><div className="flex gap-2"><button onClick={handleExport} className="text-xs text-blue-600">导出CSV</button></div></div><div className="space-y-2 max-h-[300px] overflow-y-auto">{safeLibrary.map(i=>(<div key={i.id} className="flex justify-between border-b p-2 items-center"><div><div className="font-bold text-sm">{i.title}</div><div className="text-xs text-slate-400">Lv.{i.memoryLevel}</div></div><button onClick={()=>onManageLibrary('del',i.id)} className="text-red-400 p-2"><Trash2 size={16}/></button></div>))}</div></div>
+      </div>}
+
+      {activeTab==='theme' && <div className="bg-white p-4 rounded shadow space-y-4">
+        <h3 className="font-bold flex items-center gap-2"><Palette size={18}/> 主题定制 (支持上传)</h3>
+        <div className="space-y-4">
+           <div><label className="text-xs text-slate-500 block mb-1">队长头像</label><div className="flex gap-2"><input className="border flex-1 p-2 rounded text-sm" value={themeMascot} onChange={e=>setThemeMascot(e.target.value)} placeholder="输入URL 或 上传"/><button disabled={uploading} onClick={()=>mascotInputRef.current.click()} className="bg-slate-200 px-3 rounded"><Upload size={16}/></button></div><input type="file" ref={mascotInputRef} className="hidden" accept="image/*" onChange={(e)=>handleUpload(e,'mascot')}/>{themeMascot && <img src={proxifyUrl(themeMascot)} className="w-10 h-10 mt-2 rounded object-cover"/>}</div>
+           <div><label className="text-xs text-slate-500 block mb-1">背景图片</label><div className="flex gap-2"><input className="border flex-1 p-2 rounded text-sm" value={themeBg} onChange={e=>setThemeBg(e.target.value)} placeholder="输入URL 或 上传"/><button disabled={uploading} onClick={()=>bgInputRef.current.click()} className="bg-slate-200 px-3 rounded"><Upload size={16}/></button></div><input type="file" ref={bgInputRef} className="hidden" accept="image/*" onChange={(e)=>handleUpload(e,'bg')}/>{themeBg && <img src={proxifyUrl(themeBg)} className="w-20 h-10 mt-2 rounded object-cover"/>}</div>
+           <div><label className="text-xs text-slate-500">助手名字</label><input className="border w-full p-2 rounded" value={assistantName} onChange={e=>setAssistantName(e.target.value)} placeholder="小雨点"/></div>
+        </div>
+        <button onClick={handleSaveTheme} className={`w-full py-3 rounded font-bold transition-all ${saveStatus==='theme' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}`}>
+          {saveStatus==='theme' ? '✅ 已保存' : '应用主题'}
+        </button>
+      </div>}
+
+      {activeTab==='config' && <div className="bg-white p-4 rounded shadow space-y-6">
+        <h3 className="font-bold flex items-center gap-2"><Sliders size={18}/> 调度配置</h3>
+        <div className="grid grid-cols-2 gap-4">
+           <div><label className="text-xs text-slate-500">开始时间</label><input className="border w-full p-2 rounded" type="number" value={pushStart} onChange={e=>setPushStart(e.target.value)}/></div>
+           <div><label className="text-xs text-slate-500">结束时间</label><input className="border w-full p-2 rounded" type="number" value={pushEnd} onChange={e=>setPushEnd(e.target.value)}/></div>
+           <div className="col-span-2"><label className="text-xs text-slate-500">每日上限</label><input className="border w-full p-2 rounded" type="number" value={dailyLimit} onChange={e=>setDailyLimit(e.target.value)}/></div>
+        </div>
+        <div className="border-t pt-4"><label className="text-xs text-slate-500 block mb-2">随机任务概率</label>{['english','sport','life'].map(type=>(<div key={type} className="flex items-center gap-2 mb-2"><span className="text-xs w-12 capitalize">{type}</span><input type="range" className="flex-1" min="0" max="100" value={taskProbabilities[type]} onChange={e=>setTaskProbabilities(p=>({...p,[type]:parseInt(e.target.value)}))}/><span className="text-xs w-8">{taskProbabilities[type]}%</span></div>))}</div>
+        <button onClick={handleSaveConfig} className="bg-slate-800 text-white w-full py-3 rounded font-bold">保存配置</button>
+        <div className="border-t pt-4 grid grid-cols-2 gap-3"><button onClick={handleBackup} className="p-3 bg-slate-100 rounded text-xs font-bold">备份数据</button><button onClick={()=>fileInputRef.current.click()} className="p-3 bg-slate-100 rounded text-xs font-bold">恢复数据</button><input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div>
+        <div className="pt-4 border-t flex justify-between"><button onClick={onForceSync} className="text-blue-600 text-xs flex gap-1"><Cloud size={14}/> 强制覆盖云端数据</button><button onClick={handleLogout} className="text-red-500 text-xs">退出</button></div></div>}
+      
+      {activeTab==='plan' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">待推送队列</h3>{libraryItems.filter(i=>i.nextReview<=Date.now()).length===0?<p className="text-slate-400 text-sm">无到期任务</p>:libraryItems.filter(i=>i.nextReview<=Date.now()).map(i=><div key={i.id} className="p-2 border-b text-sm">{i.title}</div>)}</div>}
+      {activeTab==='monitor' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">实时待办</h3>{pendingTasks.map(t=><div key={t.id} className="p-2 border-b flex justify-between items-center"><span className="text-sm">{t.title}</span><button onClick={()=>onDeleteTask(t.id)} className="text-red-500 text-xs border px-2 py-1 rounded">撤回</button></div>)}</div>}
+      {activeTab==='history' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">完成记录</h3>{completedTasks.map(t=><div key={t.id} className="p-2 border-b text-sm flex justify-between"><span>{t.title}</span><span className="text-green-600">{formatTime(t.completedAt)}</span></div>)}</div>}
     </div>);
 };
 
@@ -492,13 +556,20 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
     const imageUrl = proxifyUrl(task.flashcardData?.image);
     useEffect(() => { if(step==='learning') setTimeout(()=>playTaskAudio(word, task.flashcardData?.audio), 500); }, [step]);
     const checkMath = () => { if(parseInt(mathAns)===mathQ.a*mathQ.b){ setStep('success'); speak("太棒了！"); setTimeout(()=>onComplete(task),2000); } else alert("算错啦"); };
+    
+    // 生成乘法题
     const generateMath = () => {
       const a = Math.floor(Math.random() * 7) + 3; 
       const b = Math.floor(Math.random() * 7) + 3;
       setMathQ({ a, b });
       setMathAns('');
     };
-    const handleGoTeach = () => { setStep('challenge'); generateMath(); };
+
+    const handleGoTeach = () => {
+       setStep('challenge');
+       generateMath();
+    };
+
     return (
         <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4">
         <div className="bg-white text-slate-900 w-full max-w-md landscape:max-w-4xl rounded-3xl overflow-hidden shadow-2xl relative flex flex-col landscape:flex-row max-h-[90vh]">
