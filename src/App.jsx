@@ -5,7 +5,7 @@ import {
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
   Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
-  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe
+  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal
 } from 'lucide-react';
 
 // ==========================================
@@ -13,6 +13,8 @@ import {
 // ==========================================
 
 // ⚠️ 生产环境配置: 
+// 填写您的腾讯云服务器地址 (例如 http://43.143.74.76:3000)
+// 注意：如果您的前端是 HTTPS (如 Vercel)，后端也必须是 HTTPS，否则会被浏览器拦截！
 const SERVER_IP = 'http://43.143.74.76:3000'; 
 const BACKEND_HOST = '43.143.74.76:3000';
 
@@ -50,6 +52,7 @@ const GlobalStyles = () => (
 );
 
 // --- 核心工具：智能 URL 处理 ---
+// forceDirect: 强制使用 SERVER_IP (用于调试)
 const getApiEndpoint = (path, forceDirect = false) => {
   // 1. 本地调试 (localhost): 直连 IP
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
@@ -127,14 +130,8 @@ const DEFAULT_USER_DATA = {
 
 const sanitizeData = (incomingData) => {
   if (!incomingData) return DEFAULT_USER_DATA;
-  const safeUser = incomingData.user || {};
   return {
-    user: { 
-        ...DEFAULT_USER_DATA.user, 
-        ...safeUser, 
-        themeConfig: { ...DEFAULT_USER_DATA.user.themeConfig, ...safeUser.themeConfig },
-        taskProbabilities: { ...DEFAULT_USER_DATA.user.taskProbabilities, ...safeUser.taskProbabilities }
-    },
+    user: { ...DEFAULT_USER_DATA.user, ...incomingData.user, themeConfig: { ...DEFAULT_USER_DATA.user.themeConfig, ...incomingData.user?.themeConfig } },
     tasks: Array.isArray(incomingData.tasks) ? incomingData.tasks : [],
     library: Array.isArray(incomingData.library) ? incomingData.library : [],
     collection: { ...DEFAULT_USER_DATA.collection, ...incomingData.collection }
@@ -358,7 +355,7 @@ const LoginScreen = ({ onLogin }) => {
       <div className="relative z-10 w-full max-w-sm bg-slate-800/50 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V17.6</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V17.8 (完整版)</p>
         
         {SERVER_IP && (
             <div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between">
@@ -409,47 +406,19 @@ const DynamicBackground = ({ themeId, customBg }) => {
   const [bgError, setBgError] = useState(false);
   const safeBg = proxifyUrl(customBg);
   useEffect(() => { setBgError(false); }, [customBg]);
-
-  if (customBg && !bgError) {
-    return (
-      <div className="absolute inset-0 z-0">
-        <img src={safeBg} className="w-full h-full object-cover opacity-60" onError={() => setBgError(true)} />
-        <div className="absolute inset-0 bg-black/40"></div>
-      </div>
-    );
-  }
-  return (<div className="absolute inset-0 overflow-hidden pointer-events-none z-0"><div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black"></div>{[...Array(20)].map((_, i)=><div key={i} className="absolute w-0.5 h-0.5 bg-white rounded-full animate-pulse" style={{left:`${Math.random()*100}%`, top:`${Math.random()*100}%`}}></div>)}</div>);
+  if (customBg && !bgError) return (<div className="absolute inset-0 z-0"><img src={safeBg} className="w-full h-full object-cover" onError={() => setBgError(true)} /><div className="absolute inset-0 bg-black/40"></div></div>);
+  return (<div className="absolute inset-0 overflow-hidden pointer-events-none z-0"><div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black"></div>{[...Array(20)].map((_, i)=><div key={i} className="absolute w-0.5 h-0.5 bg-white rounded-full animate-pulse" style={{left:`${Math.random()*100}%`, top:`${Math.random()*100}%`}}></div>)}
+        <div className="absolute top-10 right-10 shooting-star"></div>
+        <div className="absolute top-1/3 left-20 shooting-star" style={{animationDelay: '3s'}}></div>
+  </div>);
 };
 
 const GrowingCrystal = ({ level, xp, onClick }) => {
   const currentStage = [...CRYSTAL_STAGES].reverse().find(stage => level >= stage.minLevel) || CRYSTAL_STAGES[0];
   const Icon = currentStage.icon;
   const [isPoked, setIsPoked] = useState(false);
-
-  const handlePoke = () => {
-    setIsPoked(true);
-    speak(currentStage.message);
-    if(onClick) onClick();
-    setTimeout(() => setIsPoked(false), 500);
-  };
-
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center relative py-12 cursor-pointer group w-full" onClick={handlePoke}>
-       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-80 h-80 border border-blue-500/10 rounded-full animate-[spin-slow_20s_linear_infinite]"><div className="absolute top-0 left-1/2 w-2 h-2 bg-blue-400 rounded-full shadow-lg shadow-blue-400"></div></div>
-       </div>
-
-       <div className={`absolute w-64 h-64 rounded-full blur-[80px] opacity-40 animate-pulse-slow transition-colors duration-1000 ${currentStage.color.replace('text-', 'bg-')}`}></div>
-       <div className={`relative transition-all duration-300 ease-out ${isPoked ? 'scale-110 rotate-3' : ''}`} style={{ transform: isPoked ? undefined : `scale(1.2)` }}>
-          <div className="absolute inset-0 bg-white/20 blur-xl rounded-full animate-pulse"></div>
-          <Icon size={120} strokeWidth={1} className={`${currentStage.color} drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] filter`} />
-       </div>
-       <div className="mt-12 text-center z-10 pointer-events-none">
-          <div className="text-blue-200 text-xs font-bold tracking-[0.2em] uppercase mb-1">当前形态</div>
-          <h2 className={`text-3xl font-black text-white drop-shadow-lg ${currentStage.color}`}>{currentStage.name}</h2>
-       </div>
-    </div>
-  );
+  const handlePoke = () => { setIsPoked(true); speak(currentStage.message); if(onClick) onClick(); setTimeout(() => setIsPoked(false), 500); };
+  return (<div className="flex-1 flex flex-col items-center justify-center relative py-12 cursor-pointer group w-full" onClick={handlePoke}><div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="w-80 h-80 border border-blue-500/10 rounded-full animate-[spin-slow_20s_linear_infinite]"><div className="absolute top-0 left-1/2 w-2 h-2 bg-blue-400 rounded-full shadow-lg shadow-blue-400"></div></div></div><div className={`absolute w-64 h-64 rounded-full blur-[80px] opacity-40 animate-pulse-slow transition-colors duration-1000 ${currentStage.color.replace('text-', 'bg-')}`}></div><div className={`relative transition-all duration-300 ease-out ${isPoked ? 'scale-110 rotate-3' : ''}`} style={{ transform: isPoked ? undefined : `scale(1.2)` }}><div className="absolute inset-0 bg-white/20 blur-xl rounded-full animate-pulse"></div><Icon size={120} strokeWidth={1} className={`${currentStage.color} drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] filter`} /></div><div className="mt-12 text-center z-10 pointer-events-none"><div className="text-blue-200 text-xs font-bold tracking-[0.2em] uppercase mb-1">当前形态</div><h2 className={`text-3xl font-black text-white drop-shadow-lg ${currentStage.color}`}>{currentStage.name}</h2></div></div>);
 };
 
 const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, processingTasks, userProfile }) => {
@@ -461,32 +430,8 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
   const displayTitle = isEnglish ? "英语挑战" : task.title;
   const assistantName = userProfile?.themeConfig?.assistantName || "小雨点";
 
-  useEffect(() => {
-    const t = setTimeout(() => { playSystemSound('alert'); const intro = isEnglish ? "英语挑战！" : "紧急任务！"; const content = isEnglish ? "请完成一个单词练习" : task.title; setTimeout(() => speak(`${intro} ${content}`), 1000); }, 300);
-    return () => clearTimeout(t);
-  }, [task]);
-
-  return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-       <div className="absolute inset-0 overflow-hidden pointer-events-none"><div className="absolute inset-0 bg-gradient-to-b from-transparent via-red-900/20 to-transparent animate-[scan_3s_linear_infinite] transform -translate-y-full scan-line"></div><div className="absolute inset-0 hazard-stripes"></div></div>
-       <div className="w-full max-w-lg bg-slate-800 rounded-3xl border-4 border-red-500 shadow-2xl relative overflow-hidden">
-          <div className="bg-red-500 text-white p-4 flex items-center justify-center gap-3 animate-pulse"><Siren size={24} /> <h2 className="text-xl font-black">紧急任务</h2></div>
-          <div className="p-8 flex flex-col items-center text-center">
-            <div className="mb-6 w-48 h-48 rounded-2xl bg-white/10 flex items-center justify-center overflow-hidden border-2 border-white/20 shadow-lg group">
-                {taskImage ? <img src={taskImage} className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onError={(e)=>{e.target.style.display='none'}} /> : <div className="text-6xl animate-bounce">{isEnglish?"A":"⚔️"}</div>}
-            </div>
-            <div className="space-y-2 mb-8">
-               <div className="flex items-center justify-center gap-2 text-blue-300 text-xs font-bold uppercase animate-pulse">来自 {assistantName} 的信号...</div>
-               <h1 className="text-3xl font-bold text-white">{displayTitle}</h1>
-               <div className="inline-flex items-center gap-2 bg-yellow-400/20 text-yellow-400 px-4 py-1 rounded-full border border-yellow-400/30 mt-2"><Zap size={18} fill="currentColor"/><span className="font-bold text-lg">奖励 {task.reward}</span></div>
-            </div>
-            <div className="w-full">
-              {isEnglish ? <button onClick={()=>onPlayFlashcard(task)} disabled={isProcessing} className="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-2xl font-black text-xl">开始挑战</button> : <button onClick={()=>onCompleteTask(task)} disabled={isProcessing} className="w-full bg-green-600 hover:bg-green-500 text-white py-4 rounded-2xl font-black text-xl">确认完成</button>}
-            </div>
-          </div>
-       </div>
-    </div>
-  );
+  useEffect(() => { const t = setTimeout(() => { playSystemSound('alert'); const intro = isEnglish ? "英语挑战！" : "紧急任务！"; const content = isEnglish ? "请完成一个单词练习" : task.title; setTimeout(() => speak(`${intro} ${content}`), 1000); }, 300); return () => clearTimeout(t); }, [task]);
+  return (<div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"><div className="absolute inset-0 overflow-hidden pointer-events-none"><div className="absolute inset-0 bg-gradient-to-b from-transparent via-red-900/20 to-transparent animate-[scan_3s_linear_infinite] transform -translate-y-full scan-line"></div><div className="absolute inset-0 hazard-stripes"></div></div><div className="w-full max-w-lg bg-slate-800 rounded-3xl border-4 border-red-500 shadow-2xl relative overflow-hidden flex flex-col landscape:flex-row"><div className="bg-red-500 text-white p-4 flex items-center justify-center gap-3 animate-pulse"><Siren size={24} /> <h2 className="text-xl font-black">紧急任务</h2></div><div className="p-8 flex flex-col items-center text-center"><div className="mb-6 w-48 h-48 rounded-2xl bg-white/10 flex items-center justify-center overflow-hidden border-2 border-white/20 shadow-lg group">{taskImage ? <img src={taskImage} className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onError={(e)=>{e.target.style.display='none'}} /> : <div className="text-6xl animate-bounce">{isEnglish?"A":"⚔️"}</div>}</div><div className="space-y-2 mb-8"><div className="flex items-center justify-center gap-2 text-blue-300 text-xs font-bold uppercase animate-pulse">来自 {assistantName} 的信号...</div><h1 className="text-3xl font-bold text-white">{displayTitle}</h1><div className="inline-flex items-center gap-2 bg-yellow-400/20 text-yellow-400 px-4 py-1 rounded-full border border-yellow-400/30 mt-2"><Zap size={18} fill="currentColor"/><span className="font-bold text-lg">奖励 {task.reward}</span></div></div><div className="w-full">{isEnglish ? <button onClick={()=>onPlayFlashcard(task)} disabled={isProcessing} className="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-2xl font-black text-xl">开始挑战</button> : <button onClick={()=>onCompleteTask(task)} disabled={isProcessing} className="w-full bg-green-600 hover:bg-green-500 text-white py-4 rounded-2xl font-black text-xl">确认完成</button>}</div></div></div></div>);
 };
 
 const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, toggleParentMode, processingTasks, hiddenTaskIds, onStartPatrol, isPatrolling, isPlaying, onOpenCollection, connectionMode, onForceSync, onLogout }) => {
@@ -525,7 +470,7 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
             <button onClick={()=>onOpenCollection('cards')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><BookOpen className="text-blue-400"/></button>
          </div>
       </div>
-      {displayTasks.length > 0 && !isPlaying && <TaskPopup userProfile={userProfile} tasks={displayTasks} currentTheme={currentTheme} onCompleteTask={onCompleteTask} onPlayFlashcard={onPlayFlashcard} processingTasks={new Set()} />}
+      {displayTasks.length > 0 && !isPlaying && <TaskPopup userProfile={userProfile} tasks={displayTasks} currentTheme={currentTheme} onCompleteTask={onCompleteTask} onPlayFlashcard={onPlayFlashcard} processingTasks={processingTasks} />}
     </div>
   );
 };
@@ -581,21 +526,16 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     };
 
     const handleSaveTheme = () => {
-      try {
-        onUpdateProfile({ 
-          themeConfig: {
-            mascot: themeMascot,
-            background: themeBg,
-            assistantName: assistantName
-          }
-        });
-        setSaveStatus('theme');
-        setTimeout(() => setSaveStatus(''), 2000);
-        alert("✅ 主题已更新！");
-      } catch (e) {
-        console.error(e);
-        alert("保存失败，请重试");
-      }
+      onUpdateProfile({ 
+        themeConfig: {
+          mascot: themeMascot,
+          background: themeBg,
+          assistantName: assistantName
+        }
+      });
+      setSaveStatus('theme');
+      setTimeout(() => setSaveStatus(''), 2000);
+      alert("✅ 主题已更新！");
     };
 
     const handlePush = (e) => { e.preventDefault(); onAddTask({ title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), image: newTaskType==='generic'?flashcardImg:undefined, flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已推送'); refresh(); };
@@ -607,8 +547,6 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const handleBackup = () => { const data = LocalDB.get(); const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_${Date.now()}.json`; document.body.appendChild(link); link.click(); link.remove(); };
     const handleRestore = (e) => { const file = e.target.files[0]; if(!file)return; const reader = new FileReader(); reader.onload = (ev) => { try { LocalDB.restore(JSON.parse(ev.target.result)); } catch { alert("文件错误"); } }; reader.readAsText(file); };
     
-    const handleLogout = () => { if(confirm("确定要退出登录吗？")) window.location.reload(); };
-
     return (<div className="fixed inset-0 bg-slate-100 z-50 p-4 overflow-y-auto">
       <div className="flex justify-between mb-4"><h2 className="font-bold text-slate-800">家长后台</h2><button onClick={onClose}><XCircle/></button></div>
       <div className="flex gap-2 mb-4 overflow-x-auto">{['library','theme','config','plan','monitor'].map(t=><button key={t} onClick={()=>setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold capitalize whitespace-nowrap ${activeTab===t?'bg-blue-600 text-white':'bg-white text-slate-600'}`}>{t}</button>)}</div>
@@ -728,13 +666,6 @@ export default function App() {
     setData(s.initialData); 
   };
 
-  const handleLogout = () => {
-    if(confirm("确定要退出登录吗？")) {
-       LocalDB.clear(); 
-       window.location.reload(); 
-    }
-  };
-
   const persist = (newData) => { setData(newData); CloudAPI.sync(session.uid, newData, session.mode); };
   
   const handleForceSync = async () => {
@@ -770,6 +701,7 @@ export default function App() {
   const handleAddTask = (item) => { const newData={...data}; newData.tasks.push({...item, id:generateId(), status:'pending'}); persist(newData); };
   const handleDeleteTask = (id) => { const newData={...data}; newData.tasks=newData.tasks.filter(t=>t.id!==id); persist(newData); };
   const handleUpdateProfile = (u) => { const newData={...data}; newData.user={...newData.user,...u}; persist(newData); };
+  const handleLogout = () => { if(confirm("确定要退出登录吗？")){ localStorage.removeItem('go_domi_session'); window.location.reload(); }};
 
   if (loading) return <LoadingScreen />;
   if (!session) return <LoginScreen onLogin={handleLogin} />;
