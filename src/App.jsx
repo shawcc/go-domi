@@ -30,11 +30,26 @@ const GlobalStyles = () => (
     .hazard-stripes { background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px); background-size: 50px 50px; }
     
     @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    
+    @keyframes shooting-star {
+      0% { transform: translateX(0) translateY(0) rotate(45deg); opacity: 1; }
+      100% { transform: translateX(-500px) translateY(500px) rotate(45deg); opacity: 0; }
+    }
+    .shooting-star {
+      position: absolute;
+      width: 4px; height: 4px;
+      background: white; border-radius: 50%;
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.1), 0 0 0 8px rgba(255,255,255,0.1), 0 0 20px rgba(255,255,255,1);
+      animation: shooting-star 5s linear infinite;
+    }
+    .shooting-star::before {
+      content: ''; position: absolute; top: 50%; transform: translateY(-50%); right: 0; width: 200px; height: 1px;
+      background: linear-gradient(to right, transparent, rgba(255,255,255,0.8));
+    }
   `}</style>
 );
 
 // --- 核心工具：智能 URL 处理 ---
-// forceDirect: 强制使用 SERVER_IP (用于调试)
 const getApiEndpoint = (path, forceDirect = false) => {
   // 1. 本地调试 (localhost): 直连 IP
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
@@ -112,8 +127,14 @@ const DEFAULT_USER_DATA = {
 
 const sanitizeData = (incomingData) => {
   if (!incomingData) return DEFAULT_USER_DATA;
+  const safeUser = incomingData.user || {};
   return {
-    user: { ...DEFAULT_USER_DATA.user, ...incomingData.user, themeConfig: { ...DEFAULT_USER_DATA.user.themeConfig, ...incomingData.user?.themeConfig } },
+    user: { 
+        ...DEFAULT_USER_DATA.user, 
+        ...safeUser, 
+        themeConfig: { ...DEFAULT_USER_DATA.user.themeConfig, ...safeUser.themeConfig },
+        taskProbabilities: { ...DEFAULT_USER_DATA.user.taskProbabilities, ...safeUser.taskProbabilities }
+    },
     tasks: Array.isArray(incomingData.tasks) ? incomingData.tasks : [],
     library: Array.isArray(incomingData.library) ? incomingData.library : [],
     collection: { ...DEFAULT_USER_DATA.collection, ...incomingData.collection }
@@ -173,9 +194,11 @@ const CloudAPI = {
     } catch (e) { 
       console.warn("Cloud login failed:", e);
       let warning = `连接失败 (${e.message})。已切换至离线模式。`;
+      
       if (e.message.includes('Failed to fetch') && window.location.protocol === 'https:' && forceDirect) {
           warning = '安全拦截: HTTPS 无法直连 HTTP IP。请关闭“强制直连”并检查 vercel.json。';
       }
+      
       return { uid: username, token: 'offline', initialData: LocalDB.get(), mode: 'offline', warning }; 
     }
   },
@@ -335,7 +358,7 @@ const LoginScreen = ({ onLogin }) => {
       <div className="relative z-10 w-full max-w-sm bg-slate-800/50 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V17.5 (完整功能)</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V17.6</p>
         
         {SERVER_IP && (
             <div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between">
@@ -386,7 +409,15 @@ const DynamicBackground = ({ themeId, customBg }) => {
   const [bgError, setBgError] = useState(false);
   const safeBg = proxifyUrl(customBg);
   useEffect(() => { setBgError(false); }, [customBg]);
-  if (customBg && !bgError) return (<div className="absolute inset-0 z-0"><img src={safeBg} className="w-full h-full object-cover" onError={() => setBgError(true)} /><div className="absolute inset-0 bg-black/40"></div></div>);
+
+  if (customBg && !bgError) {
+    return (
+      <div className="absolute inset-0 z-0">
+        <img src={safeBg} className="w-full h-full object-cover opacity-60" onError={() => setBgError(true)} />
+        <div className="absolute inset-0 bg-black/40"></div>
+      </div>
+    );
+  }
   return (<div className="absolute inset-0 overflow-hidden pointer-events-none z-0"><div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black"></div>{[...Array(20)].map((_, i)=><div key={i} className="absolute w-0.5 h-0.5 bg-white rounded-full animate-pulse" style={{left:`${Math.random()*100}%`, top:`${Math.random()*100}%`}}></div>)}</div>);
 };
 
@@ -394,8 +425,31 @@ const GrowingCrystal = ({ level, xp, onClick }) => {
   const currentStage = [...CRYSTAL_STAGES].reverse().find(stage => level >= stage.minLevel) || CRYSTAL_STAGES[0];
   const Icon = currentStage.icon;
   const [isPoked, setIsPoked] = useState(false);
-  const handlePoke = () => { setIsPoked(true); speak(currentStage.message); if(onClick) onClick(); setTimeout(() => setIsPoked(false), 500); };
-  return (<div className="flex-1 flex flex-col items-center justify-center relative py-12 cursor-pointer group w-full" onClick={handlePoke}><div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="w-80 h-80 border border-blue-500/10 rounded-full animate-[spin-slow_20s_linear_infinite]"><div className="absolute top-0 left-1/2 w-2 h-2 bg-blue-400 rounded-full shadow-lg shadow-blue-400"></div></div></div><div className={`absolute w-64 h-64 rounded-full blur-[80px] opacity-40 animate-pulse-slow transition-colors duration-1000 ${currentStage.color.replace('text-', 'bg-')}`}></div><div className={`relative transition-all duration-300 ease-out ${isPoked ? 'scale-110 rotate-3' : ''}`} style={{ transform: isPoked ? undefined : `scale(1.2)` }}><div className="absolute inset-0 bg-white/20 blur-xl rounded-full animate-pulse"></div><Icon size={120} strokeWidth={1} className={`${currentStage.color} drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] filter`} /></div><div className="mt-12 text-center z-10 pointer-events-none"><div className="text-blue-200 text-xs font-bold tracking-[0.2em] uppercase mb-1">当前形态</div><h2 className={`text-3xl font-black text-white drop-shadow-lg ${currentStage.color}`}>{currentStage.name}</h2></div></div>);
+
+  const handlePoke = () => {
+    setIsPoked(true);
+    speak(currentStage.message);
+    if(onClick) onClick();
+    setTimeout(() => setIsPoked(false), 500);
+  };
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center relative py-12 cursor-pointer group w-full" onClick={handlePoke}>
+       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-80 h-80 border border-blue-500/10 rounded-full animate-[spin-slow_20s_linear_infinite]"><div className="absolute top-0 left-1/2 w-2 h-2 bg-blue-400 rounded-full shadow-lg shadow-blue-400"></div></div>
+       </div>
+
+       <div className={`absolute w-64 h-64 rounded-full blur-[80px] opacity-40 animate-pulse-slow transition-colors duration-1000 ${currentStage.color.replace('text-', 'bg-')}`}></div>
+       <div className={`relative transition-all duration-300 ease-out ${isPoked ? 'scale-110 rotate-3' : ''}`} style={{ transform: isPoked ? undefined : `scale(1.2)` }}>
+          <div className="absolute inset-0 bg-white/20 blur-xl rounded-full animate-pulse"></div>
+          <Icon size={120} strokeWidth={1} className={`${currentStage.color} drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] filter`} />
+       </div>
+       <div className="mt-12 text-center z-10 pointer-events-none">
+          <div className="text-blue-200 text-xs font-bold tracking-[0.2em] uppercase mb-1">当前形态</div>
+          <h2 className={`text-3xl font-black text-white drop-shadow-lg ${currentStage.color}`}>{currentStage.name}</h2>
+       </div>
+    </div>
+  );
 };
 
 const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, processingTasks, userProfile }) => {
@@ -407,24 +461,71 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
   const displayTitle = isEnglish ? "英语挑战" : task.title;
   const assistantName = userProfile?.themeConfig?.assistantName || "小雨点";
 
-  useEffect(() => { const t = setTimeout(() => { playSystemSound('alert'); const intro = isEnglish ? "英语挑战！" : "紧急任务！"; const content = isEnglish ? "请完成一个单词练习" : task.title; setTimeout(() => speak(`${intro} ${content}`), 1000); }, 300); return () => clearTimeout(t); }, [task]);
-  return (<div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"><div className="absolute inset-0 overflow-hidden pointer-events-none"><div className="absolute inset-0 bg-gradient-to-b from-transparent via-red-900/20 to-transparent animate-[scan_3s_linear_infinite] transform -translate-y-full scan-line"></div><div className="absolute inset-0 hazard-stripes"></div></div><div className="w-full max-w-lg bg-slate-800 rounded-3xl border-4 border-red-500 shadow-2xl relative overflow-hidden"><div className="bg-red-500 text-white p-4 flex items-center justify-center gap-3 animate-pulse"><Siren size={24} /> <h2 className="text-xl font-black">紧急任务</h2></div><div className="p-8 flex flex-col items-center text-center"><div className="mb-6 w-48 h-48 rounded-2xl bg-white/10 flex items-center justify-center overflow-hidden border-2 border-white/20 shadow-lg group">{taskImage ? <img src={taskImage} className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onError={(e)=>{e.target.style.display='none'}} /> : <div className="text-6xl animate-bounce">{isEnglish?"A":"⚔️"}</div>}</div><div className="space-y-2 mb-8"><div className="flex items-center justify-center gap-2 text-blue-300 text-xs font-bold uppercase animate-pulse">来自 {assistantName} 的信号...</div><h1 className="text-3xl font-bold text-white">{displayTitle}</h1><div className="inline-flex items-center gap-2 bg-yellow-400/20 text-yellow-400 px-4 py-1 rounded-full border border-yellow-400/30 mt-2"><Zap size={18} fill="currentColor"/><span className="font-bold text-lg">奖励 {task.reward}</span></div></div><div className="w-full">{isEnglish ? <button onClick={()=>onPlayFlashcard(task)} disabled={isProcessing} className="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-2xl font-black text-xl">开始挑战</button> : <button onClick={()=>onCompleteTask(task)} disabled={isProcessing} className="w-full bg-green-600 hover:bg-green-500 text-white py-4 rounded-2xl font-black text-xl">确认完成</button>}</div></div></div></div>);
+  useEffect(() => {
+    const t = setTimeout(() => { playSystemSound('alert'); const intro = isEnglish ? "英语挑战！" : "紧急任务！"; const content = isEnglish ? "请完成一个单词练习" : task.title; setTimeout(() => speak(`${intro} ${content}`), 1000); }, 300);
+    return () => clearTimeout(t);
+  }, [task]);
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+       <div className="absolute inset-0 overflow-hidden pointer-events-none"><div className="absolute inset-0 bg-gradient-to-b from-transparent via-red-900/20 to-transparent animate-[scan_3s_linear_infinite] transform -translate-y-full scan-line"></div><div className="absolute inset-0 hazard-stripes"></div></div>
+       <div className="w-full max-w-lg bg-slate-800 rounded-3xl border-4 border-red-500 shadow-2xl relative overflow-hidden">
+          <div className="bg-red-500 text-white p-4 flex items-center justify-center gap-3 animate-pulse"><Siren size={24} /> <h2 className="text-xl font-black">紧急任务</h2></div>
+          <div className="p-8 flex flex-col items-center text-center">
+            <div className="mb-6 w-48 h-48 rounded-2xl bg-white/10 flex items-center justify-center overflow-hidden border-2 border-white/20 shadow-lg group">
+                {taskImage ? <img src={taskImage} className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onError={(e)=>{e.target.style.display='none'}} /> : <div className="text-6xl animate-bounce">{isEnglish?"A":"⚔️"}</div>}
+            </div>
+            <div className="space-y-2 mb-8">
+               <div className="flex items-center justify-center gap-2 text-blue-300 text-xs font-bold uppercase animate-pulse">来自 {assistantName} 的信号...</div>
+               <h1 className="text-3xl font-bold text-white">{displayTitle}</h1>
+               <div className="inline-flex items-center gap-2 bg-yellow-400/20 text-yellow-400 px-4 py-1 rounded-full border border-yellow-400/30 mt-2"><Zap size={18} fill="currentColor"/><span className="font-bold text-lg">奖励 {task.reward}</span></div>
+            </div>
+            <div className="w-full">
+              {isEnglish ? <button onClick={()=>onPlayFlashcard(task)} disabled={isProcessing} className="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-2xl font-black text-xl">开始挑战</button> : <button onClick={()=>onCompleteTask(task)} disabled={isProcessing} className="w-full bg-green-600 hover:bg-green-500 text-white py-4 rounded-2xl font-black text-xl">确认完成</button>}
+            </div>
+          </div>
+       </div>
+    </div>
+  );
 };
 
-const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, toggleParentMode, processingTasks, hiddenTaskIds, onStartPatrol, isPatrolling, isPlaying, onOpenCollection, connectionMode, onForceSync }) => {
+const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, toggleParentMode, processingTasks, hiddenTaskIds, onStartPatrol, isPatrolling, isPlaying, onOpenCollection, connectionMode, onForceSync, onLogout }) => {
   const currentTheme = THEMES.cosmic;
+  const displayTasks = tasks.filter(t => t.status === 'pending');
+  const progressPercent = Math.min((userProfile.xp / (userProfile.level*100)) * 100, 100);
   const mascotImg = proxifyUrl(userProfile.themeConfig?.mascot || currentTheme.mascot);
   const bgImg = proxifyUrl(userProfile.themeConfig?.background || currentTheme.backgroundImage);
-  const progressPercent = Math.min((userProfile.xp / (userProfile.level*100)) * 100, 100);
 
   return (
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} flex flex-col relative`}>
       <DynamicBackground themeId="cosmic" customBg={bgImg} />
       {isPatrolling && <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60"><div className="w-[300px] h-[300px] border-4 border-green-500 rounded-full animate-ping"></div><div className="mt-8 text-green-400 font-mono text-2xl font-black animate-pulse">SCANNING...</div></div>}
-      <div onClick={onForceSync} className={`w-full py-1 text-center text-[10px] font-bold cursor-pointer transition-colors ${connectionMode === 'cloud' ? 'bg-green-600 text-white' : 'bg-red-600 text-white animate-pulse'}`}>{connectionMode === 'cloud' ? '🟢 基地在线' : `🔴 ${connectionMode === 'offline' ? '离线模式' : '连接异常'} (点击重试)`}</div>
-      <div className="w-full p-4 flex justify-between items-center bg-black/20 backdrop-blur-md z-10"><div className="flex items-center gap-3"><div className="w-14 h-14 bg-white/10 rounded-full overflow-hidden"><img src={mascotImg} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none';e.target.nextSibling.style.display='block'}}/><Rocket className="text-yellow-400 hidden" size={32}/></div><div><div className="font-bold">多米队长</div><div className="text-xs opacity-70">Lv.{userProfile.level}</div></div></div><div className="flex gap-3"><div className="flex items-center gap-1 bg-black/40 px-3 py-1 rounded-full"><Zap size={14} className="text-yellow-400"/><span className="font-bold text-yellow-400">{userProfile.coins}</span></div><button onClick={toggleParentMode}><Settings size={20}/></button></div></div>
-      <div className="flex-1 relative z-10 flex flex-col"><div className="px-6 mt-4"><div className="w-full bg-black/40 h-3 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{width: `${progressPercent}%`}}></div></div></div><GrowingCrystal level={userProfile.level} xp={userProfile.xp} onClick={() => speak(currentTheme.currency)} /><div className="fixed bottom-6 w-full flex justify-center gap-6 items-end pb-4 pointer-events-none"><button onClick={()=>onOpenCollection('puzzle')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><Puzzle className="text-yellow-400"/></button><button onClick={onStartPatrol} disabled={isPatrolling} className="pointer-events-auto w-24 h-24 bg-blue-600 rounded-full flex flex-col items-center justify-center border-4 border-blue-400 shadow-xl mb-2"><Radar className="text-white w-10 h-10"/><span className="text-[10px] font-black uppercase mt-1">巡逻</span></button><button onClick={()=>onOpenCollection('cards')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><BookOpen className="text-blue-400"/></button></div></div>
-      {tasks.length > 0 && !isPlaying && <TaskPopup userProfile={userProfile} tasks={tasks} currentTheme={currentTheme} onCompleteTask={onCompleteTask} onPlayFlashcard={onPlayFlashcard} processingTasks={processingTasks} />}
+      
+      {/* 顶部状态栏 */}
+      <div 
+        onClick={onForceSync}
+        className={`w-full py-1 text-center text-[10px] font-bold cursor-pointer transition-colors ${connectionMode === 'cloud' ? 'bg-green-600 text-white' : 'bg-red-600 text-white animate-pulse'}`}
+      >
+         {connectionMode === 'cloud' ? '🟢 基地在线' : `🔴 ${connectionMode === 'offline' ? '离线模式' : '连接异常'} (点击重试)`}
+      </div>
+
+      <div className="w-full p-4 flex justify-between items-center bg-black/20 backdrop-blur-md z-10">
+         <div className="flex items-center gap-3">
+            <button onClick={onLogout} className="w-8 h-8 rounded-full bg-slate-800/80 flex items-center justify-center border border-white/20 text-red-400 mr-2 hover:bg-slate-700 transition-colors"><LogOut size={14}/></button>
+            <div className="w-14 h-14 bg-white/10 rounded-full overflow-hidden"><img src={mascotImg} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none';e.target.nextSibling.style.display='block'}}/><Rocket className="text-yellow-400 hidden" size={32}/></div><div><div className="font-bold">多米队长</div><div className="text-xs opacity-70">Lv.{userProfile.level}</div></div>
+         </div>
+         <div className="flex gap-3"><div className="flex items-center gap-1 bg-black/40 px-3 py-1 rounded-full"><Zap size={14} className="text-yellow-400"/><span className="font-bold text-yellow-400">{userProfile.coins}</span></div><button onClick={toggleParentMode}><Settings size={20}/></button></div>
+      </div>
+      <div className="flex-1 relative z-10 flex flex-col">
+         <div className="px-6 mt-4"><div className="w-full bg-black/40 h-3 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{width: `${progressPercent}%`}}></div></div></div>
+         <GrowingCrystal level={userProfile.level} xp={userProfile.xp} onClick={() => speak(currentTheme.currency)} />
+         <div className="fixed bottom-6 w-full flex justify-center gap-6 items-end pb-4 pointer-events-none">
+            <button onClick={()=>onOpenCollection('puzzle')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><Puzzle className="text-yellow-400"/></button>
+            <button onClick={onStartPatrol} disabled={isPatrolling} className="pointer-events-auto w-24 h-24 bg-blue-600 rounded-full flex flex-col items-center justify-center border-4 border-blue-400 shadow-xl mb-2"><Radar className="text-white w-10 h-10"/><span className="text-[10px] font-black uppercase mt-1">巡逻</span></button>
+            <button onClick={()=>onOpenCollection('cards')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><BookOpen className="text-blue-400"/></button>
+         </div>
+      </div>
+      {displayTasks.length > 0 && !isPlaying && <TaskPopup userProfile={userProfile} tasks={displayTasks} currentTheme={currentTheme} onCompleteTask={onCompleteTask} onPlayFlashcard={onPlayFlashcard} processingTasks={new Set()} />}
     </div>
   );
 };
@@ -432,6 +533,8 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
 const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose, onDeleteTask, onUpdateProfile, onManageLibrary, onDataChange, sessionUid, onForceSync }) => {
     const [activeTab, setActiveTab] = useState('library'); 
     const [saveStatus, setSaveStatus] = useState(''); 
+    
+    // Form States
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [newTaskType, setNewTaskType] = useState('generic');
     const [newTaskReward, setNewTaskReward] = useState(20);
@@ -441,35 +544,114 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const [flashcardAudio, setFlashcardAudio] = useState('');
     const [batchWords, setBatchWords] = useState('');
     const [uploading, setUploading] = useState(false);
+    
+    // Config states
     const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
     const [pushEnd, setPushEnd] = useState(userProfile.pushEndHour || 21);
     const [dailyLimit, setDailyLimit] = useState(userProfile.dailyLimit || 10);
     const [taskProbabilities, setTaskProbabilities] = useState(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
+    
+    // Theme States
     const [themeMascot, setThemeMascot] = useState(userProfile.themeConfig?.mascot || '');
     const [themeBg, setThemeBg] = useState(userProfile.themeConfig?.background || '');
     const [assistantName, setAssistantName] = useState(userProfile.themeConfig?.assistantName || '');
-    const mascotInputRef = useRef(null); const bgInputRef = useRef(null);
-    const safeTasks = Array.isArray(tasks) ? tasks : []; const safeLibrary = Array.isArray(libraryItems) ? libraryItems : [];
-    const pendingTasks = safeTasks.filter(t => t.status === 'pending'); const completedTasks = safeTasks.filter(t => t.status === 'completed');
+    
+    const mascotInputRef = useRef(null);
+    const bgInputRef = useRef(null);
+    const fileInputRef = useRef(null);
+
+    const safeTasks = Array.isArray(tasks) ? tasks : [];
+    const safeLibrary = Array.isArray(libraryItems) ? libraryItems : [];
+    const pendingTasks = safeTasks.filter(t => t.status === 'pending');
+    const completedTasks = safeTasks.filter(t => t.status === 'completed');
     const upcomingTasks = safeLibrary.filter(item => item.nextReview && item.nextReview > Date.now()).sort((a,b) => a.nextReview - b.nextReview);
+
     const refresh = () => { if(onDataChange) onDataChange(); };
-    const handleUpload = async (e, type) => { const file = e.target.files[0]; if(!file)return; setUploading(true); try { const url = await CloudAPI.upload(file); if (type === 'mascot') setThemeMascot(url); if (type === 'bg') setThemeBg(url); alert("上传成功!"); } catch (err) { alert(err.message); } finally { setUploading(false); } };
-    const handleSaveTheme = () => { onUpdateProfile({ themeConfig: { mascot: themeMascot, background: themeBg, assistantName: assistantName } }); setSaveStatus('theme'); setTimeout(() => setSaveStatus(''), 2000); alert("✅ 主题已更新！"); };
+
+    const handleUpload = async (e, type) => {
+       const file = e.target.files[0];
+       if(!file) return;
+       setUploading(true);
+       try {
+         const url = await CloudAPI.upload(file);
+         if (type === 'mascot') setThemeMascot(url);
+         if (type === 'bg') setThemeBg(url);
+         alert("上传成功!");
+       } catch (err) { alert(err.message); } finally { setUploading(false); }
+    };
+
+    const handleSaveTheme = () => {
+      try {
+        onUpdateProfile({ 
+          themeConfig: {
+            mascot: themeMascot,
+            background: themeBg,
+            assistantName: assistantName
+          }
+        });
+        setSaveStatus('theme');
+        setTimeout(() => setSaveStatus(''), 2000);
+        alert("✅ 主题已更新！");
+      } catch (e) {
+        console.error(e);
+        alert("保存失败，请重试");
+      }
+    };
+
     const handlePush = (e) => { e.preventDefault(); onAddTask({ title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), image: newTaskType==='generic'?flashcardImg:undefined, flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已推送'); refresh(); };
     const handleAddToLibrary = (e) => { e.preventDefault(); onManageLibrary('add', { title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), image: newTaskType==='generic'?flashcardImg:undefined, flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null, memoryLevel: 0, nextReview: getNextBeijingScheduleTime(parseInt(pushStart)) }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已添加到库'); refresh(); };
     const handleBatchAddWords = () => { if (!batchWords.trim()) return; const words = batchWords.split(/[,，\n]/).map(w => w.trim()).filter(w => w); const batchTime = getNextBeijingScheduleTime(parseInt(pushStart)); let count = 0; words.forEach(word => { const enrichedData = enrichWordTask(word); onManageLibrary('add', { title: `练习单词: ${enrichedData.word}`, type: 'english', reward: 20, flashcardData: enrichedData, memoryLevel: 0, nextReview: batchTime }); count++; }); alert(`成功生成 ${count} 个任务！`); setBatchWords(''); refresh(); };
     const handleSaveConfig = () => { onUpdateProfile({ taskProbabilities, pushStartHour: parseInt(pushStart), pushEndHour: parseInt(pushEnd), dailyLimit: parseInt(dailyLimit) }); alert("保存成功"); };
+    
     const handleExport = () => { const BOM = "\uFEFF"; const rows = safeLibrary.map(item => `${(item.title||"").replace(/,/g,"，")},${item.type||"generic"},${item.reward||10},${item.flashcardData?.word||""}`); const blob = new Blob([BOM + "标题,类型,奖励,单词\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = "tasks.csv"; document.body.appendChild(link); link.click(); link.remove(); };
     const handleBackup = () => { const data = LocalDB.get(); const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_${Date.now()}.json`; document.body.appendChild(link); link.click(); link.remove(); };
     const handleRestore = (e) => { const file = e.target.files[0]; if(!file)return; const reader = new FileReader(); reader.onload = (ev) => { try { LocalDB.restore(JSON.parse(ev.target.result)); } catch { alert("文件错误"); } }; reader.readAsText(file); };
+    
     const handleLogout = () => { if(confirm("确定要退出登录吗？")) window.location.reload(); };
 
     return (<div className="fixed inset-0 bg-slate-100 z-50 p-4 overflow-y-auto">
       <div className="flex justify-between mb-4"><h2 className="font-bold text-slate-800">家长后台</h2><button onClick={onClose}><XCircle/></button></div>
       <div className="flex gap-2 mb-4 overflow-x-auto">{['library','theme','config','plan','monitor'].map(t=><button key={t} onClick={()=>setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold capitalize whitespace-nowrap ${activeTab===t?'bg-blue-600 text-white':'bg-white text-slate-600'}`}>{t}</button>)}</div>
-      {activeTab==='library' && <div className="space-y-6"><div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><h3 className="font-bold mb-2 flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3><textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词，逗号分隔 (如: apple, banana)"/><button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成</button></div><div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-slate-300"><h3 className="font-bold mb-4">手动添加任务</h3><div className="flex gap-2 mb-3"><button onClick={()=>setNewTaskType('generic')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='generic'?'bg-slate-200 border-slate-400':''}`}>通用任务</button><button onClick={()=>setNewTaskType('english')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='english'?'bg-purple-100 border-purple-400 text-purple-700':''}`}>英语任务</button></div><div className="space-y-3"><div className="flex gap-2"><input className="flex-1 border p-2 rounded" value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)} placeholder="任务名称 (必填)" /><input className="w-20 border p-2 rounded" type="number" value={newTaskReward} onChange={e=>setNewTaskReward(e.target.value)} placeholder="奖励" /></div>{newTaskType === 'english' && <div className="bg-purple-50 p-3 rounded border border-purple-100 space-y-2"><div className="flex gap-2"><input className="flex-1 border p-2 rounded text-sm" placeholder="英文单词" value={flashcardWord} onChange={e=>setFlashcardWord(e.target.value)} /><input className="flex-1 border p-2 rounded text-sm" placeholder="中文释义" value={flashcardTrans} onChange={e=>setFlashcardTrans(e.target.value)} /></div><input className="w-full border p-2 rounded text-sm" placeholder="图片 URL" value={flashcardImg} onChange={e=>setFlashcardImg(e.target.value)} /><input className="w-full border p-2 rounded text-sm" placeholder="发音 URL" value={flashcardAudio} onChange={e=>setFlashcardAudio(e.target.value)} /></div>}{newTaskType === 'generic' && <input className="w-full border p-2 rounded text-sm" placeholder="图片 URL (选填)" value={flashcardImg} onChange={e=>setFlashcardImg(e.target.value)} />}<div className="flex gap-2"><button onClick={handleAddToLibrary} className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-bold">加入计划库</button><button onClick={handlePush} className="flex-1 bg-slate-800 text-white py-3 rounded-lg font-bold">立即推送</button></div></div></div><div className="bg-white p-4 rounded-xl shadow-sm"><div className="flex justify-between items-center mb-4"><h3 className="font-bold">任务库 ({safeLibrary.length})</h3><div className="flex gap-2"><button onClick={handleExport} className="text-xs text-blue-600">导出CSV</button></div></div><div className="space-y-2 max-h-[300px] overflow-y-auto">{safeLibrary.map(i=>(<div key={i.id} className="flex justify-between border-b p-2 items-center"><div><div className="font-bold text-sm">{i.title}</div><div className="text-xs text-slate-400">Lv.{i.memoryLevel}</div></div><button onClick={()=>onManageLibrary('del',i.id)} className="text-red-400 p-2"><Trash2 size={16}/></button></div>))}</div></div></div>}
-      {activeTab==='theme' && <div className="bg-white p-4 rounded shadow space-y-4"><h3 className="font-bold flex items-center gap-2"><Palette size={18}/> 主题定制 (支持上传)</h3><div className="space-y-4"><div><label className="text-xs text-slate-500 block mb-1">队长头像</label><div className="flex gap-2"><input className="border flex-1 p-2 rounded text-sm" value={themeMascot} onChange={e=>setThemeMascot(e.target.value)} placeholder="输入URL 或 上传"/><button disabled={uploading} onClick={()=>mascotInputRef.current.click()} className="bg-slate-200 px-3 rounded"><Upload size={16}/></button></div><input type="file" ref={mascotInputRef} className="hidden" accept="image/*" onChange={(e)=>handleUpload(e,'mascot')}/>{themeMascot && <img src={proxifyUrl(themeMascot)} className="w-10 h-10 mt-2 rounded object-cover"/>}</div><div><label className="text-xs text-slate-500 block mb-1">背景图片</label><div className="flex gap-2"><input className="border flex-1 p-2 rounded text-sm" value={themeBg} onChange={e=>setThemeBg(e.target.value)} placeholder="输入URL 或 上传"/><button disabled={uploading} onClick={()=>bgInputRef.current.click()} className="bg-slate-200 px-3 rounded"><Upload size={16}/></button></div><input type="file" ref={bgInputRef} className="hidden" accept="image/*" onChange={(e)=>handleUpload(e,'bg')}/>{themeBg && <img src={proxifyUrl(themeBg)} className="w-20 h-10 mt-2 rounded object-cover"/>}</div><div><label className="text-xs text-slate-500">助手名字</label><input className="border w-full p-2 rounded" value={assistantName} onChange={e=>setAssistantName(e.target.value)} placeholder="小雨点"/></div></div><button onClick={handleSaveTheme} className={`w-full py-3 rounded font-bold transition-all ${saveStatus==='theme' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}`}>{saveStatus==='theme' ? '✅ 已保存' : '应用主题'}</button></div>}
-      {activeTab==='config' && <div className="bg-white p-4 rounded shadow space-y-6"><h3 className="font-bold flex items-center gap-2"><Sliders size={18}/> 调度配置</h3><div className="grid grid-cols-2 gap-4"><div><label className="text-xs text-slate-500">开始时间</label><input className="border w-full p-2 rounded" type="number" value={pushStart} onChange={e=>setPushStart(e.target.value)}/></div><div><label className="text-xs text-slate-500">结束时间</label><input className="border w-full p-2 rounded" type="number" value={pushEnd} onChange={e=>setPushEnd(e.target.value)}/></div><div className="col-span-2"><label className="text-xs text-slate-500">每日上限</label><input className="border w-full p-2 rounded" type="number" value={dailyLimit} onChange={e=>setDailyLimit(e.target.value)}/></div></div><div className="border-t pt-4"><label className="text-xs text-slate-500 block mb-2">随机任务概率</label>{['english','sport','life'].map(type=>(<div key={type} className="flex items-center gap-2 mb-2"><span className="text-xs w-12 capitalize">{type}</span><input type="range" className="flex-1" min="0" max="100" value={taskProbabilities[type]} onChange={e=>setTaskProbabilities(p=>({...p,[type]:parseInt(e.target.value)}))}/><span className="text-xs w-8">{taskProbabilities[type]}%</span></div>))}</div><button onClick={handleSaveConfig} className="bg-slate-800 text-white w-full py-3 rounded font-bold">保存配置</button><div className="border-t pt-4 grid grid-cols-2 gap-3"><button onClick={handleBackup} className="p-3 bg-slate-100 rounded text-xs font-bold">备份数据</button><button onClick={()=>fileInputRef.current.click()} className="p-3 bg-slate-100 rounded text-xs font-bold">恢复数据</button><input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div><div className="pt-4 border-t flex justify-between"><button onClick={onForceSync} className="text-blue-600 text-xs flex gap-1"><Cloud size={14}/> 强制覆盖云端数据</button><button onClick={handleLogout} className="text-red-500 text-xs">退出</button></div></div>}
+      
+      {activeTab==='library' && <div className="space-y-6">
+         <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><h3 className="font-bold mb-2 flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3><textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词，逗号分隔 (如: apple, banana)"/><button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成</button></div>
+         <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-slate-300">
+           <h3 className="font-bold mb-4">手动添加任务</h3>
+           <div className="flex gap-2 mb-3"><button onClick={()=>setNewTaskType('generic')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='generic'?'bg-slate-200 border-slate-400':''}`}>通用任务</button><button onClick={()=>setNewTaskType('english')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='english'?'bg-purple-100 border-purple-400 text-purple-700':''}`}>英语任务</button></div>
+           <div className="space-y-3">
+             <div className="flex gap-2"><input className="flex-1 border p-2 rounded" value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)} placeholder="任务名称 (必填)" /><input className="w-20 border p-2 rounded" type="number" value={newTaskReward} onChange={e=>setNewTaskReward(e.target.value)} placeholder="奖励" /></div>
+             {newTaskType === 'english' && <div className="bg-purple-50 p-3 rounded border border-purple-100 space-y-2"><div className="flex gap-2"><input className="flex-1 border p-2 rounded text-sm" placeholder="英文单词" value={flashcardWord} onChange={e=>setFlashcardWord(e.target.value)} /><input className="flex-1 border p-2 rounded text-sm" placeholder="中文释义" value={flashcardTrans} onChange={e=>setFlashcardTrans(e.target.value)} /></div><input className="w-full border p-2 rounded text-sm" placeholder="图片 URL" value={flashcardImg} onChange={e=>setFlashcardImg(e.target.value)} /><input className="w-full border p-2 rounded text-sm" placeholder="发音 URL" value={flashcardAudio} onChange={e=>setFlashcardAudio(e.target.value)} /></div>}
+             {newTaskType === 'generic' && <input className="w-full border p-2 rounded text-sm" placeholder="图片 URL (选填)" value={flashcardImg} onChange={e=>setFlashcardImg(e.target.value)} />}
+             <div className="flex gap-2"><button onClick={handleAddToLibrary} className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-bold">加入计划库</button><button onClick={handlePush} className="flex-1 bg-slate-800 text-white py-3 rounded-lg font-bold">立即推送</button></div>
+           </div>
+         </div>
+         <div className="bg-white p-4 rounded-xl shadow-sm"><div className="flex justify-between items-center mb-4"><h3 className="font-bold">任务库 ({safeLibrary.length})</h3><div className="flex gap-2"><button onClick={handleExport} className="text-xs text-blue-600">导出CSV</button></div></div><div className="space-y-2 max-h-[300px] overflow-y-auto">{safeLibrary.map(i=>(<div key={i.id} className="flex justify-between border-b p-2 items-center"><div><div className="font-bold text-sm">{i.title}</div><div className="text-xs text-slate-400">Lv.{i.memoryLevel}</div></div><button onClick={()=>onManageLibrary('del',i.id)} className="text-red-400 p-2"><Trash2 size={16}/></button></div>))}</div></div>
+      </div>}
+
+      {activeTab==='theme' && <div className="bg-white p-4 rounded shadow space-y-4">
+        <h3 className="font-bold flex items-center gap-2"><Palette size={18}/> 主题定制 (支持上传)</h3>
+        <div className="space-y-4">
+           <div><label className="text-xs text-slate-500 block mb-1">队长头像</label><div className="flex gap-2"><input className="border flex-1 p-2 rounded text-sm" value={themeMascot} onChange={e=>setThemeMascot(e.target.value)} placeholder="输入URL 或 上传"/><button disabled={uploading} onClick={()=>mascotInputRef.current.click()} className="bg-slate-200 px-3 rounded"><Upload size={16}/></button></div><input type="file" ref={mascotInputRef} className="hidden" accept="image/*" onChange={(e)=>handleUpload(e,'mascot')}/>{themeMascot && <img src={proxifyUrl(themeMascot)} className="w-10 h-10 mt-2 rounded object-cover"/>}</div>
+           <div><label className="text-xs text-slate-500 block mb-1">背景图片</label><div className="flex gap-2"><input className="border flex-1 p-2 rounded text-sm" value={themeBg} onChange={e=>setThemeBg(e.target.value)} placeholder="输入URL 或 上传"/><button disabled={uploading} onClick={()=>bgInputRef.current.click()} className="bg-slate-200 px-3 rounded"><Upload size={16}/></button></div><input type="file" ref={bgInputRef} className="hidden" accept="image/*" onChange={(e)=>handleUpload(e,'bg')}/>{themeBg && <img src={proxifyUrl(themeBg)} className="w-20 h-10 mt-2 rounded object-cover"/>}</div>
+           <div><label className="text-xs text-slate-500">助手名字</label><input className="border w-full p-2 rounded" value={assistantName} onChange={e=>setAssistantName(e.target.value)} placeholder="小雨点"/></div>
+        </div>
+        <button onClick={handleSaveTheme} className={`w-full py-3 rounded font-bold transition-all ${saveStatus==='theme' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}`}>
+          {saveStatus==='theme' ? '✅ 已保存' : '应用主题'}
+        </button>
+      </div>}
+
+      {activeTab==='config' && <div className="bg-white p-4 rounded shadow space-y-6">
+        <h3 className="font-bold flex items-center gap-2"><Sliders size={18}/> 调度配置</h3>
+        <div className="grid grid-cols-2 gap-4">
+           <div><label className="text-xs text-slate-500">开始时间</label><input className="border w-full p-2 rounded" type="number" value={pushStart} onChange={e=>setPushStart(e.target.value)}/></div>
+           <div><label className="text-xs text-slate-500">结束时间</label><input className="border w-full p-2 rounded" type="number" value={pushEnd} onChange={e=>setPushEnd(e.target.value)}/></div>
+           <div className="col-span-2"><label className="text-xs text-slate-500">每日上限</label><input className="border w-full p-2 rounded" type="number" value={dailyLimit} onChange={e=>setDailyLimit(e.target.value)}/></div>
+        </div>
+        <div className="border-t pt-4"><label className="text-xs text-slate-500 block mb-2">随机任务概率</label>{['english','sport','life'].map(type=>(<div key={type} className="flex items-center gap-2 mb-2"><span className="text-xs w-12 capitalize">{type}</span><input type="range" className="flex-1" min="0" max="100" value={taskProbabilities[type]} onChange={e=>setTaskProbabilities(p=>({...p,[type]:parseInt(e.target.value)}))}/><span className="text-xs w-8">{taskProbabilities[type]}%</span></div>))}</div>
+        <button onClick={handleSaveConfig} className="bg-slate-800 text-white w-full py-3 rounded font-bold">保存配置</button>
+        <div className="border-t pt-4 grid grid-cols-2 gap-3"><button onClick={handleBackup} className="p-3 bg-slate-100 rounded text-xs font-bold">备份数据</button><button onClick={()=>fileInputRef.current.click()} className="p-3 bg-slate-100 rounded text-xs font-bold">恢复数据</button><input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div>
+        <div className="pt-4 border-t flex justify-between"><button onClick={onForceSync} className="text-blue-600 text-xs flex gap-1"><Cloud size={14}/> 强制覆盖云端数据</button><button onClick={handleLogout} className="text-red-500 text-xs">退出</button></div></div>}
+      
       {activeTab==='plan' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">待推送队列</h3>{libraryItems.filter(i=>i.nextReview<=Date.now()).length===0?<p className="text-slate-400 text-sm">无到期任务</p>:libraryItems.filter(i=>i.nextReview<=Date.now()).map(i=><div key={i.id} className="p-2 border-b text-sm">{i.title}</div>)}</div>}
       {activeTab==='monitor' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">实时待办</h3>{pendingTasks.map(t=><div key={t.id} className="p-2 border-b flex justify-between items-center"><span className="text-sm">{t.title}</span><button onClick={()=>onDeleteTask(t.id)} className="text-red-500 text-xs border px-2 py-1 rounded">撤回</button></div>)}</div>}
       {activeTab==='history' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">完成记录</h3>{completedTasks.map(t=><div key={t.id} className="p-2 border-b text-sm flex justify-between"><span>{t.title}</span><span className="text-green-600">{formatTime(t.completedAt)}</span></div>)}</div>}
@@ -546,12 +728,19 @@ export default function App() {
     setData(s.initialData); 
   };
 
+  const handleLogout = () => {
+    if(confirm("确定要退出登录吗？")) {
+       LocalDB.clear(); 
+       window.location.reload(); 
+    }
+  };
+
   const persist = (newData) => { setData(newData); CloudAPI.sync(session.uid, newData, session.mode); };
   
   const handleForceSync = async () => {
     if(!session) return;
     if(confirm("确定要将当前设备的本地数据覆盖到云端吗？")) {
-       await CloudAPI.sync(session.uid, data, 'force'); // 强制云端同步
+       await CloudAPI.sync(session.uid, data, 'force');
        alert("已强制同步到云端！");
     }
   };
@@ -581,7 +770,6 @@ export default function App() {
   const handleAddTask = (item) => { const newData={...data}; newData.tasks.push({...item, id:generateId(), status:'pending'}); persist(newData); };
   const handleDeleteTask = (id) => { const newData={...data}; newData.tasks=newData.tasks.filter(t=>t.id!==id); persist(newData); };
   const handleUpdateProfile = (u) => { const newData={...data}; newData.user={...newData.user,...u}; persist(newData); };
-  const handleLogout = () => { if(confirm("确定要退出登录吗？")){ localStorage.removeItem('go_domi_session'); window.location.reload(); }};
 
   if (loading) return <LoadingScreen />;
   if (!session) return <LoginScreen onLogin={handleLogin} />;
@@ -599,8 +787,9 @@ export default function App() {
           processingTasks={new Set()} hiddenTaskIds={new Set()} 
           onStartPatrol={handleStartPatrol} isPatrolling={isPatrolling} isPlaying={!!activeFlashcardTask} 
           onOpenCollection={() => setShowCollection(true)}
-          connectionMode={session.mode} // 传递连接状态
+          connectionMode={session.mode}
           onForceSync={handleForceSync}
+          onLogout={handleLogout}
         />
         {isParentMode && <ParentDashboard userProfile={data.user} tasks={data.tasks} libraryItems={data.library} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} onUpdateProfile={handleUpdateProfile} onManageLibrary={handleManageLibrary} onClose={() => setIsParentMode(false)} onDataChange={() => setData(LocalDB.get())} sessionUid={session.uid} onForceSync={handleForceSync}/>}
         {activeFlashcardTask && <FlashcardGame task={activeFlashcardTask} onClose={() => setActiveFlashcardTask(null)} onComplete={handleComplete} />}
