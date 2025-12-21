@@ -5,7 +5,7 @@ import {
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
   Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
-  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal
+  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe
 } from 'lucide-react';
 
 // ==========================================
@@ -34,12 +34,17 @@ const GlobalStyles = () => (
 );
 
 // --- 核心工具：智能 URL 处理 ---
-const getApiEndpoint = (path) => {
+// forceDirect: 强制使用 SERVER_IP (用于调试混合内容问题)
+const getApiEndpoint = (path, forceDirect = false) => {
   // 1. 本地调试 (localhost): 直连 IP
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
      return SERVER_IP ? `${SERVER_IP}${path}` : path;
   }
-  // 2. 线上生产 (Vercel): 使用相对路径，依赖 vercel.json 转发
+  // 2. 强制直连模式 (调试用)
+  if (forceDirect) {
+     return SERVER_IP ? `${SERVER_IP}${path}` : path;
+  }
+  // 3. 线上生产 (Vercel/Webify): 使用相对路径，依赖平台代理转发
   return path;
 };
 
@@ -140,39 +145,42 @@ const LocalDB = {
 };
 
 const CloudAPI = {
-  // 诊断工具：测试连接
-  testConnection: async () => {
-    const endpoint = getApiEndpoint('/'); // 假设后端根路径返回 Hello
-    try {
-      const res = await fetch(endpoint);
-      if (res.ok) return { success: true, msg: "连接成功" };
-      return { success: false, msg: `HTTP错误: ${res.status}` };
-    } catch (e) {
-      return { success: false, msg: e.message };
-    }
-  },
-
-  login: async (username) => {
-    const endpoint = getApiEndpoint('/api/login');
+  login: async (username, forceDirect = false) => {
+    // 调试模式：强制使用 SERVER_IP
+    const endpoint = getApiEndpoint('/api/login', forceDirect);
+    
     try {
       const controller = new AbortController();
       setTimeout(() => controller.abort(), 8000); 
+      
+      console.log(`[CloudAPI] Connecting to: ${endpoint}`);
       const res = await fetch(endpoint, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username }), 
         signal: controller.signal
       });
+      
       if (res.ok) {
         const result = await res.json();
         const safeData = sanitizeData(result.data);
         return { uid: username, token: result.token, initialData: safeData, mode: 'cloud' };
       } else {
-        console.warn(`Login failed with status: ${res.status}`);
+        if (res.status === 404) {
+             throw new Error("404: 反向代理未配置 (请检查 vercel.json 或 Webify 路由)");
+        }
+        throw new Error(`服务器响应错误: ${res.status}`);
       }
-    } catch (e) { console.warn("Cloud login failed:", e); }
-    
-    return { uid: username, token: 'offline', initialData: LocalDB.get(), mode: 'offline', warning: '无法连接云端，已切换至本地离线模式。' };
+    } catch (e) { 
+      console.warn("Cloud login failed:", e);
+      let warning = '无法连接云端，已切换至本地模式。';
+      if (e.message.includes('Failed to fetch') && window.location.protocol === 'https:') {
+          warning = '安全拦截: HTTPS 无法直连 HTTP IP。请配置代理或 SSL。';
+      } else if (e.message.includes('404')) {
+          warning = '路由错误: 代理未生效 (404)。请检查 vercel.json。';
+      }
+      return { uid: username, token: 'offline', initialData: LocalDB.get(), mode: 'offline', warning }; 
+    }
   },
   fetchData: async (username) => {
      const endpoint = getApiEndpoint('/api/login');
@@ -301,6 +309,7 @@ const LoginScreen = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [useDirect, setUseDirect] = useState(false); // 调试：强制直连
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -308,10 +317,9 @@ const LoginScreen = ({ onLogin }) => {
     setLoading(true);
     setErrorMsg('');
     try {
-      const session = await CloudAPI.login(username.trim());
-      if (session.mode === 'offline') {
-         setErrorMsg("⚠️ 离线模式: 无法连接服务器 (可能需要 vercel.json)");
-      }
+      // 传递 useDirect 参数
+      const session = await CloudAPI.login(username.trim(), useDirect);
+      if (session.warning) setErrorMsg(session.warning);
       onLogin(session);
     } catch(e) { 
       setErrorMsg(e.message);
@@ -319,28 +327,43 @@ const LoginScreen = ({ onLogin }) => {
       setLoading(false); 
     }
   };
-  
-  const handleTest = async () => {
-    setLoading(true);
-    const res = await CloudAPI.testConnection();
-    alert(`测试结果: ${res.success ? '✅ 连接成功' : '❌ 失败'} \n信息: ${res.msg}`);
-    setLoading(false);
-  };
 
   return (
     <div className="fixed inset-0 w-screen h-screen bg-slate-900 flex flex-col landscape:flex-row items-center justify-center text-white p-6 z-50">
       <div className="relative z-10 w-full max-w-sm bg-slate-800/50 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V17.1</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V17.2</p>
+        
+        {SERVER_IP && (
+            <div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between">
+                <span className="flex gap-2"><Server size={14}/> {SERVER_IP}</span>
+                {/* 隐藏开关：强制 HTTP 直连 (调试用) */}
+                <button onClick={()=>setUseDirect(!useDirect)} className={`text-[10px] px-1 rounded ${useDirect?'bg-red-500 text-white':'text-slate-500'}`}>
+                   {useDirect ? '强制直连' : '代理模式'}
+                </button>
+            </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
-           <input type="text" className="w-full bg-slate-900/50 border border-slate-600 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-blue-400" placeholder="例如: domi" value={username} onChange={e => setUsername(e.target.value)} />
-           <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2">{loading ? <Loader2 className="animate-spin"/> : "连接基地"}</button>
+           <div className="relative">
+             <User className="absolute left-3 top-3.5 text-slate-400" size={20} />
+             <input type="text" className="w-full bg-slate-900/50 border border-slate-600 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-400" placeholder="请输入特工代号" value={username} onChange={e => setUsername(e.target.value)} />
+           </div>
+           <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2">
+             {loading ? <Loader2 className="animate-spin"/> : "连接基地"}
+           </button>
         </form>
-        {errorMsg && <div className="mt-4 p-3 bg-red-900/50 border border-red-500/50 rounded-xl text-red-200 text-xs flex items-start gap-2"><Activity size={16} className="shrink-0 mt-0.5" /><span>{errorMsg}</span></div>}
-        <div className="mt-6 flex justify-between text-xs text-slate-500">
-           <button onClick={handleTest} className="flex items-center gap-1 hover:text-blue-400"><Signal size={12}/> 网络测试</button>
-           <button onClick={LocalDB.export} className="flex items-center gap-1 hover:text-blue-400"><Download size={12}/> 导出数据</button>
+
+        {errorMsg && (
+           <div className="mt-4 p-3 bg-red-900/50 border border-red-500/50 rounded-xl text-red-200 text-xs flex items-start gap-2 animate-in slide-in-from-top-2">
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+              <span>{errorMsg}</span>
+           </div>
+        )}
+        
+        <div className="mt-6 text-center text-xs text-slate-500">
+           <button onClick={LocalDB.export} className="text-blue-400 hover:underline">导出本地数据备份</button>
         </div>
       </div>
     </div>
@@ -367,13 +390,28 @@ const GrowingCrystal = ({ level, xp, onClick }) => {
   const currentStage = [...CRYSTAL_STAGES].reverse().find(stage => level >= stage.minLevel) || CRYSTAL_STAGES[0];
   const Icon = currentStage.icon;
   const [isPoked, setIsPoked] = useState(false);
-  const handlePoke = () => { setIsPoked(true); speak(currentStage.message); if(onClick) onClick(); setTimeout(() => setIsPoked(false), 500); };
+
+  const handlePoke = () => {
+    setIsPoked(true);
+    speak(currentStage.message);
+    if(onClick) onClick();
+    setTimeout(() => setIsPoked(false), 500);
+  };
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center relative py-12 cursor-pointer group w-full" onClick={handlePoke}>
-       <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="w-80 h-80 border border-blue-500/10 rounded-full animate-[spin-slow_20s_linear_infinite]"><div className="absolute top-0 left-1/2 w-2 h-2 bg-blue-400 rounded-full shadow-lg shadow-blue-400"></div></div></div>
+       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-80 h-80 border border-blue-500/10 rounded-full animate-[spin-slow_20s_linear_infinite]"><div className="absolute top-0 left-1/2 w-2 h-2 bg-blue-400 rounded-full shadow-lg shadow-blue-400"></div></div>
+       </div>
        <div className={`absolute w-64 h-64 rounded-full blur-[80px] opacity-40 animate-pulse-slow transition-colors duration-1000 ${currentStage.color.replace('text-', 'bg-')}`}></div>
-       <div className={`relative transition-all duration-300 ease-out ${isPoked ? 'scale-110 rotate-3' : ''}`} style={{ transform: isPoked ? undefined : `scale(1.2)` }}><div className="absolute inset-0 bg-white/20 blur-xl rounded-full animate-pulse"></div><Icon size={120} strokeWidth={1} className={`${currentStage.color} drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] filter`} /></div>
-       <div className="mt-12 text-center z-10 pointer-events-none"><div className="text-blue-200 text-xs font-bold tracking-[0.2em] uppercase mb-1">当前形态</div><h2 className={`text-3xl font-black text-white drop-shadow-lg ${currentStage.color}`}>{currentStage.name}</h2></div>
+       <div className={`relative transition-all duration-300 ease-out ${isPoked ? 'scale-110 rotate-3' : ''}`} style={{ transform: isPoked ? undefined : `scale(1.2)` }}>
+          <div className="absolute inset-0 bg-white/20 blur-xl rounded-full animate-pulse"></div>
+          <Icon size={120} strokeWidth={1} className={`${currentStage.color} drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] filter`} />
+       </div>
+       <div className="mt-12 text-center z-10 pointer-events-none">
+          <div className="text-blue-200 text-xs font-bold tracking-[0.2em] uppercase mb-1">当前形态</div>
+          <h2 className={`text-3xl font-black text-white drop-shadow-lg ${currentStage.color}`}>{currentStage.name}</h2>
+       </div>
     </div>
   );
 };
@@ -432,7 +470,7 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
         onClick={onForceSync}
         className={`w-full py-1 text-center text-[10px] font-bold cursor-pointer transition-colors ${connectionMode === 'cloud' ? 'bg-green-600 text-white' : 'bg-red-600 text-white animate-pulse'}`}
       >
-         {connectionMode === 'cloud' ? '🟢 基地在线 (点击强制同步)' : '🔴 离线模式 (点击尝试重连)'}
+         {connectionMode === 'cloud' ? '🟢 基地在线 (点击强制同步)' : `🔴 ${connectionMode === 'offline' ? '离线模式' : '连接异常'} (点击重试)`}
       </div>
 
       <div className="w-full p-4 flex justify-between items-center bg-black/20 backdrop-blur-md z-10">
@@ -504,16 +542,21 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     };
 
     const handleSaveTheme = () => {
-      onUpdateProfile({ 
-        themeConfig: {
-          mascot: themeMascot,
-          background: themeBg,
-          assistantName: assistantName
-        }
-      });
-      setSaveStatus('theme');
-      setTimeout(() => setSaveStatus(''), 2000);
-      alert("✅ 主题已更新！");
+      try {
+        onUpdateProfile({ 
+          themeConfig: {
+            mascot: themeMascot,
+            background: themeBg,
+            assistantName: assistantName
+          }
+        });
+        setSaveStatus('theme');
+        setTimeout(() => setSaveStatus(''), 2000);
+        alert("✅ 主题已更新！");
+      } catch (e) {
+        console.error(e);
+        alert("保存失败，请重试");
+      }
     };
 
     const handlePush = (e) => { e.preventDefault(); onAddTask({ title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), image: newTaskType==='generic'?flashcardImg:undefined, flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已推送'); refresh(); };
