@@ -5,7 +5,7 @@ import {
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
   Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
-  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle
+  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal
 } from 'lucide-react';
 
 // ==========================================
@@ -140,6 +140,18 @@ const LocalDB = {
 };
 
 const CloudAPI = {
+  // 诊断工具：测试连接
+  testConnection: async () => {
+    const endpoint = getApiEndpoint('/'); // 假设后端根路径返回 Hello
+    try {
+      const res = await fetch(endpoint);
+      if (res.ok) return { success: true, msg: "连接成功" };
+      return { success: false, msg: `HTTP错误: ${res.status}` };
+    } catch (e) {
+      return { success: false, msg: e.message };
+    }
+  },
+
   login: async (username) => {
     const endpoint = getApiEndpoint('/api/login');
     try {
@@ -160,7 +172,7 @@ const CloudAPI = {
       }
     } catch (e) { console.warn("Cloud login failed:", e); }
     
-    return { uid: username, token: 'offline', initialData: LocalDB.get(), mode: 'offline', warning: '无法连接云端，已切换至本地离线模式。请检查 vercel.json 配置或服务器状态。' };
+    return { uid: username, token: 'offline', initialData: LocalDB.get(), mode: 'offline', warning: '无法连接云端，已切换至本地离线模式。' };
   },
   fetchData: async (username) => {
      const endpoint = getApiEndpoint('/api/login');
@@ -297,12 +309,22 @@ const LoginScreen = ({ onLogin }) => {
     setErrorMsg('');
     try {
       const session = await CloudAPI.login(username.trim());
-      if (session.warning) alert(session.warning);
+      if (session.mode === 'offline') {
+         setErrorMsg("⚠️ 离线模式: 无法连接服务器 (可能需要 vercel.json)");
+      }
       onLogin(session);
     } catch(e) { 
       setErrorMsg(e.message);
+    } finally { 
       setLoading(false); 
     }
+  };
+  
+  const handleTest = async () => {
+    setLoading(true);
+    const res = await CloudAPI.testConnection();
+    alert(`测试结果: ${res.success ? '✅ 连接成功' : '❌ 失败'} \n信息: ${res.msg}`);
+    setLoading(false);
   };
 
   return (
@@ -310,13 +332,16 @@ const LoginScreen = ({ onLogin }) => {
       <div className="relative z-10 w-full max-w-sm bg-slate-800/50 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V17.0</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V17.1</p>
         <form onSubmit={handleSubmit} className="space-y-4">
            <input type="text" className="w-full bg-slate-900/50 border border-slate-600 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-blue-400" placeholder="例如: domi" value={username} onChange={e => setUsername(e.target.value)} />
            <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2">{loading ? <Loader2 className="animate-spin"/> : "连接基地"}</button>
         </form>
         {errorMsg && <div className="mt-4 p-3 bg-red-900/50 border border-red-500/50 rounded-xl text-red-200 text-xs flex items-start gap-2"><Activity size={16} className="shrink-0 mt-0.5" /><span>{errorMsg}</span></div>}
-        <div className="mt-6 text-center text-xs text-slate-500"><button onClick={LocalDB.export} className="text-blue-400 hover:underline">导出本地数据</button></div>
+        <div className="mt-6 flex justify-between text-xs text-slate-500">
+           <button onClick={handleTest} className="flex items-center gap-1 hover:text-blue-400"><Signal size={12}/> 网络测试</button>
+           <button onClick={LocalDB.export} className="flex items-center gap-1 hover:text-blue-400"><Download size={12}/> 导出数据</button>
+        </div>
       </div>
     </div>
   );
@@ -390,7 +415,7 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
   );
 };
 
-const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, toggleParentMode, processingTasks, hiddenTaskIds, onStartPatrol, isPatrolling, isPlaying, onOpenCollection, connectionMode }) => {
+const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, toggleParentMode, processingTasks, hiddenTaskIds, onStartPatrol, isPatrolling, isPlaying, onOpenCollection, connectionMode, onForceSync }) => {
   const currentTheme = THEMES.cosmic;
   const displayTasks = tasks.filter(t => t.status === 'pending');
   const progressPercent = Math.min((userProfile.xp / (userProfile.level*100)) * 100, 100);
@@ -402,9 +427,12 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
       <DynamicBackground themeId="cosmic" customBg={bgImg} />
       {isPatrolling && <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60"><div className="w-[300px] h-[300px] border-4 border-green-500 rounded-full animate-ping"></div><div className="mt-8 text-green-400 font-mono text-2xl font-black animate-pulse">SCANNING...</div></div>}
       
-      {/* 顶部状态栏 */}
-      <div className={`w-full py-1 text-center text-[10px] font-bold ${connectionMode === 'cloud' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
-         {connectionMode === 'cloud' ? '🟢 基地在线' : '🔴 离线模式 (数据仅本地保存)'}
+      {/* 顶部状态栏 - 点击可尝试重连/同步 */}
+      <div 
+        onClick={onForceSync}
+        className={`w-full py-1 text-center text-[10px] font-bold cursor-pointer transition-colors ${connectionMode === 'cloud' ? 'bg-green-600 text-white' : 'bg-red-600 text-white animate-pulse'}`}
+      >
+         {connectionMode === 'cloud' ? '🟢 基地在线 (点击强制同步)' : '🔴 离线模式 (点击尝试重连)'}
       </div>
 
       <div className="w-full p-4 flex justify-between items-center bg-black/20 backdrop-blur-md z-10">
@@ -655,7 +683,7 @@ export default function App() {
   const handleAddTask = (item) => { const newData={...data}; newData.tasks.push({...item, id:generateId(), status:'pending'}); persist(newData); };
   const handleDeleteTask = (id) => { const newData={...data}; newData.tasks=newData.tasks.filter(t=>t.id!==id); persist(newData); };
   const handleUpdateProfile = (u) => { const newData={...data}; newData.user={...newData.user,...u}; persist(newData); };
-  const handleLogout = () => { if(confirm("退出?")){ localStorage.removeItem('go_domi_session'); window.location.reload(); }};
+  const handleLogout = () => { if(confirm("确定要退出登录吗？")){ localStorage.removeItem('go_domi_session'); window.location.reload(); }};
 
   if (loading) return <LoadingScreen />;
   if (!session) return <LoginScreen onLogin={handleLogin} />;
