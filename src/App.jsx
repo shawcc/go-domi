@@ -5,13 +5,14 @@ import {
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
   Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
-  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe, Info
+  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe, Info, Play
 } from 'lucide-react';
 
 // ==========================================
 // --- 0. 基础配置 ---
 // ==========================================
 
+// ⚠️ 生产环境配置: 
 const SERVER_IP = 'http://43.143.74.76:3000'; 
 const BACKEND_HOST = '43.143.74.76:3000';
 
@@ -20,20 +21,49 @@ const GlobalStyles = () => (
     html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; max-width: none !important; overflow-x: hidden; font-family: system-ui, -apple-system, sans-serif; background-color: #0f172a; }
     ::-webkit-scrollbar { width: 0px; background: transparent; }
     
-    @keyframes shine { 0% { transform: translateX(-100%) rotate(45deg); } 100% { transform: translateX(200%) rotate(45deg); } }
+    @keyframes shine { 
+      0% { transform: translateX(-100%) rotate(45deg); } 
+      100% { transform: translateX(200%) rotate(45deg); } 
+    }
+    
     .shiny-card { position: relative; overflow: hidden; }
-    .shiny-card::after { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%); transform: translateX(-100%) rotate(45deg); animation: shine 3s infinite; }
+    .shiny-card::after { 
+      content: ""; 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%); 
+      transform: translateX(-100%) rotate(45deg); 
+      animation: shine 3s infinite; 
+    }
     
-    @keyframes scan { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
-    .scan-line { background: linear-gradient(to bottom, transparent, rgba(239, 68, 68, 0.5), transparent); animation: scan 3s linear infinite; }
-    .hazard-stripes { background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px); background-size: 50px 50px; }
+    @keyframes scan { 
+      0% { transform: translateY(-100%); } 
+      100% { transform: translateY(100%); } 
+    }
     
-    @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .scan-line { 
+      background: linear-gradient(to bottom, transparent, rgba(239, 68, 68, 0.5), transparent); 
+      animation: scan 3s linear infinite; 
+    }
+    
+    .hazard-stripes { 
+      background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px); 
+      background-size: 50px 50px; 
+    }
+    
+    @keyframes spin-slow { 
+      from { transform: rotate(0deg); } 
+      to { transform: rotate(360deg); } 
+    }
     
     @keyframes shooting-star {
       0% { transform: translateX(0) translateY(0) rotate(45deg); opacity: 1; }
       100% { transform: translateX(-500px) translateY(500px) rotate(45deg); opacity: 0; }
     }
+    
     .shooting-star {
       position: absolute;
       width: 4px; height: 4px;
@@ -41,6 +71,7 @@ const GlobalStyles = () => (
       box-shadow: 0 0 0 4px rgba(255,255,255,0.1), 0 0 0 8px rgba(255,255,255,0.1), 0 0 20px rgba(255,255,255,1);
       animation: shooting-star 5s linear infinite;
     }
+    
     .shooting-star::before {
       content: ''; position: absolute; top: 50%; transform: translateY(-50%); right: 0; width: 200px; height: 1px;
       background: linear-gradient(to right, transparent, rgba(255,255,255,0.8));
@@ -50,13 +81,16 @@ const GlobalStyles = () => (
 
 // --- 核心工具：智能 URL 处理 ---
 const getApiEndpoint = (path, forceDirect = false) => {
+  // 1. 本地调试 (localhost): 直连 IP
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
      return SERVER_IP ? `${SERVER_IP}${path}` : path;
   }
+  // 2. 强制直连模式 (仅用于诊断)
   if (forceDirect) {
      return `${SERVER_IP}${path}`;
   }
-  return path; // 线上环境默认走相对路径 (Vercel Proxy)
+  // 3. 线上生产 (Vercel): 强制使用相对路径，依赖 vercel.json 转发
+  return path;
 };
 
 const proxifyUrl = (url) => {
@@ -72,9 +106,8 @@ const proxifyUrl = (url) => {
 // ==========================================
 // --- 1. 基础组件 ---
 // ==========================================
-
 const LoadingScreen = () => (
-  <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-4">
+  <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center text-white p-4 z-[100]">
     <div className="animate-bounce text-6xl mb-4">🚀</div>
     <h1 className="text-2xl font-bold animate-pulse">正在连接宇宙基地...</h1>
     <p className="text-slate-400 mt-2">系统初始化中</p>
@@ -100,7 +133,7 @@ class ErrorBoundary extends React.Component {
 }
 
 // ==========================================
-// --- 2. 数据引擎与 API ---
+// --- 2. 数据引擎 ---
 // ==========================================
 const STORAGE_KEY = 'go_domi_data_v17_robust'; 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
@@ -183,19 +216,19 @@ const CloudAPI = {
         return { uid: username, token: result.token, initialData: safeData, mode: 'cloud' };
       } else {
         if (res.status === 404 && !forceDirect) {
-             throw new Error(`404: 接口未找到。请检查 Vercel Rewrites 配置。请求地址: ${endpoint}`);
+             throw new Error(`404 错误: 找不到接口。请检查 vercel.json 是否上传到根目录。\n请求地址: ${endpoint}`);
         }
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
     } catch (e) { 
       console.warn("Cloud login failed:", e);
-      let warning = `连接失败 (${e.message})。`;
+      let warning = `连接失败 (${e.message})。已切换至离线模式。`;
       
       if (e.message.includes('Failed to fetch') && window.location.protocol === 'https:' && forceDirect) {
-          warning = '安全拦截: HTTPS 无法直连 HTTP IP。';
+          warning = '安全拦截: HTTPS 无法直连 HTTP IP。请关闭“强制直连”并确保 vercel.json 配置正确。';
       }
       
-      return { uid: username, token: 'offline', initialData: LocalDB.get(), mode: 'offline', warning, debugInfo: e.message }; 
+      return { uid: username, token: 'offline', initialData: LocalDB.get(), mode: 'offline', warning, debugInfo: endpoint }; 
     }
   },
   fetchData: async (username) => {
@@ -211,7 +244,7 @@ const CloudAPI = {
           return safeData;
        }
      } catch (e) {}
-     return LocalDB.get();
+     return null;
   },
   sync: async (username, data, mode) => {
     LocalDB.save(data);
@@ -279,7 +312,23 @@ const MAX_DAILY_TASKS = 10;
 // --- Utilities ---
 const getBeijingTime = () => { const now = new Date(); return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + 8 * 3600000); };
 const isBeijingActiveWindow = (start, end) => { const h = getBeijingTime().getHours(); return h >= start && h < end; };
-const getNextBeijingScheduleTime = () => { const t = getBeijingTime(); t.setHours(19,0,0,0); if(Date.now() >= t.getTime()) t.setDate(t.getDate()+1); return t.getTime(); };
+// 计算预计推送时间 (用于显示)
+const getScheduledTimeDisplay = (pushStart, itemNextReview) => {
+   const now = Date.now();
+   const todayPushStart = new Date();
+   todayPushStart.setHours(pushStart, 0, 0, 0);
+   
+   if (itemNextReview > now) {
+      return new Date(itemNextReview).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+   }
+   if (now < todayPushStart.getTime()) {
+      return "今天 " + pushStart + ":00"; 
+   } else {
+      return "队列中 (随时)";
+   }
+};
+
+const getNextBeijingScheduleTime = (startHour = 19) => { const t = getBeijingTime(); t.setHours(startHour - 8,0,0,0); if(Date.now() >= t.getTime()) t.setDate(t.getDate()+1); return t.getTime(); };
 const formatTime = (ts) => new Date(ts).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
 
 const speak = (text) => {
@@ -323,25 +372,23 @@ const LoginScreen = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [debugInfo, setDebugInfo] = useState('');
-  const [useDirect, setUseDirect] = useState(false); // 调试：强制直连
+  const [useDirect, setUseDirect] = useState(false);
+  const [debugEndpoint, setDebugEndpoint] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!username.trim()) return;
     setLoading(true);
     setErrorMsg('');
-    setDebugInfo('');
     try {
       const session = await CloudAPI.login(username.trim(), useDirect);
       if (session.warning) {
-          setErrorMsg(session.warning);
-          setDebugInfo(session.debugInfo || '');
+        setErrorMsg(session.warning);
+        setDebugEndpoint(session.debugInfo || '');
       }
       
-      // 延迟跳转，确保用户看到错误提示
       if (session.mode === 'offline') {
-        setTimeout(() => onLogin(session), 3000);
+        setTimeout(() => onLogin(session), 2500);
       } else {
         onLogin(session);
       }
@@ -353,16 +400,15 @@ const LoginScreen = ({ onLogin }) => {
   };
 
   return (
-    <div className="fixed inset-0 w-screen h-screen bg-slate-900 flex flex-col landscape:flex-row items-center justify-center text-white p-6 z-50">
-      <div className="relative z-10 w-full max-w-sm bg-slate-800/50 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
+    <div className="fixed inset-0 w-screen h-screen bg-slate-900 flex flex-col landscape:flex-row items-center justify-center text-white p-6 z-[200]">
+      <div className="relative z-10 w-full max-w-sm bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V17.8</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V18.1 (Full)</p>
         
         {SERVER_IP && (
             <div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between">
                 <span className="flex gap-2"><Server size={14}/> {SERVER_IP}</span>
-                {/* 隐藏开关：强制 HTTP 直连 (调试用) */}
                 <button onClick={()=>setUseDirect(!useDirect)} className={`text-[10px] px-1 rounded ${useDirect?'bg-red-500 text-white':'text-slate-500'}`}>
                    {useDirect ? '强制直连' : '代理模式'}
                 </button>
@@ -392,13 +438,10 @@ const LoginScreen = ({ onLogin }) => {
         {errorMsg && (
            <div className="mt-4 p-3 bg-red-900/50 border border-red-500/50 rounded-xl text-red-200 text-xs flex flex-col gap-1 animate-in slide-in-from-top-2">
               <div className="flex items-start gap-2 font-bold"><AlertTriangle size={16} className="shrink-0 mt-0.5" /> <span>{errorMsg}</span></div>
-              {debugInfo && <div className="text-[10px] opacity-70 break-all font-mono pl-6">{debugInfo}</div>}
+              {debugEndpoint && <div className="text-[10px] opacity-70 break-all font-mono pl-6">尝试连接: {debugEndpoint}</div>}
            </div>
         )}
-        
-        <div className="mt-6 text-center text-xs text-slate-500">
-           <button onClick={LocalDB.export} className="text-blue-400 hover:underline">导出本地数据备份</button>
-        </div>
+        <div className="mt-6 text-center text-xs text-slate-500"><button onClick={LocalDB.export} className="text-blue-400 hover:underline">导出本地数据备份</button></div>
       </div>
     </div>
   );
@@ -408,7 +451,7 @@ const DynamicBackground = ({ themeId, customBg }) => {
   const [bgError, setBgError] = useState(false);
   const safeBg = proxifyUrl(customBg);
   useEffect(() => { setBgError(false); }, [customBg]);
-  if (customBg && !bgError) return (<div className="absolute inset-0 z-0"><img src={safeBg} className="w-full h-full object-cover" onError={() => setBgError(true)} /><div className="absolute inset-0 bg-black/40"></div></div>);
+  if (customBg && !bgError) return (<div className="absolute inset-0 z-0"><img src={safeBg} className="w-full h-full object-cover opacity-60" onError={() => setBgError(true)} /><div className="absolute inset-0 bg-black/40"></div></div>);
   return (<div className="absolute inset-0 overflow-hidden pointer-events-none z-0"><div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black"></div>{[...Array(20)].map((_, i)=><div key={i} className="absolute w-0.5 h-0.5 bg-white rounded-full animate-pulse" style={{left:`${Math.random()*100}%`, top:`${Math.random()*100}%`}}></div>)}
         <div className="absolute top-10 right-10 shooting-star"></div>
         <div className="absolute top-1/3 left-20 shooting-star" style={{animationDelay: '3s'}}></div>
@@ -438,10 +481,9 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
 
 const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, toggleParentMode, processingTasks, hiddenTaskIds, onStartPatrol, isPatrolling, isPlaying, onOpenCollection, connectionMode, onForceSync, onLogout }) => {
   const currentTheme = THEMES.cosmic;
-  const displayTasks = tasks.filter(t => t.status === 'pending');
-  const progressPercent = Math.min((userProfile.xp / (userProfile.level*100)) * 100, 100);
   const mascotImg = proxifyUrl(userProfile.themeConfig?.mascot || currentTheme.mascot);
   const bgImg = proxifyUrl(userProfile.themeConfig?.background || currentTheme.backgroundImage);
+  const progressPercent = Math.min((userProfile.xp / (userProfile.level*100)) * 100, 100);
 
   return (
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} flex flex-col relative`}>
@@ -450,16 +492,27 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
       <div onClick={onForceSync} className={`w-full py-1 text-center text-[10px] font-bold cursor-pointer transition-colors ${connectionMode === 'cloud' ? 'bg-green-600 text-white' : 'bg-red-600 text-white animate-pulse'}`}>{connectionMode === 'cloud' ? '🟢 基地在线' : `🔴 ${connectionMode === 'offline' ? '离线模式' : '连接异常'} (点击重试)`}</div>
       <div className="w-full p-4 flex justify-between items-center bg-black/20 backdrop-blur-md z-10"><div className="flex items-center gap-3"><button onClick={onLogout} className="w-8 h-8 rounded-full bg-slate-800/80 flex items-center justify-center border border-white/20 text-red-400 mr-2 hover:bg-slate-700 transition-colors"><LogOut size={14}/></button><div className="w-14 h-14 bg-white/10 rounded-full overflow-hidden"><img src={mascotImg} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none';e.target.nextSibling.style.display='block'}}/><Rocket className="text-yellow-400 hidden" size={32}/></div><div><div className="font-bold">多米队长</div><div className="text-xs opacity-70">Lv.{userProfile.level}</div></div></div><div className="flex gap-3"><div className="flex items-center gap-1 bg-black/40 px-3 py-1 rounded-full"><Zap size={14} className="text-yellow-400"/><span className="font-bold text-yellow-400">{userProfile.coins}</span></div><button onClick={toggleParentMode}><Settings size={20}/></button></div></div>
       <div className="flex-1 relative z-10 flex flex-col"><div className="px-6 mt-4"><div className="w-full bg-black/40 h-3 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{width: `${progressPercent}%`}}></div></div></div><GrowingCrystal level={userProfile.level} xp={userProfile.xp} onClick={() => speak(currentTheme.currency)} /><div className="fixed bottom-6 w-full flex justify-center gap-6 items-end pb-4 pointer-events-none"><button onClick={()=>onOpenCollection('puzzle')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><Puzzle className="text-yellow-400"/></button><button onClick={onStartPatrol} disabled={isPatrolling} className="pointer-events-auto w-24 h-24 bg-blue-600 rounded-full flex flex-col items-center justify-center border-4 border-blue-400 shadow-xl mb-2"><Radar className="text-white w-10 h-10"/><span className="text-[10px] font-black uppercase mt-1">巡逻</span></button><button onClick={()=>onOpenCollection('cards')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><BookOpen className="text-blue-400"/></button></div></div>
-      {tasks.length > 0 && !isPlaying && <TaskPopup userProfile={userProfile} tasks={displayTasks} currentTheme={currentTheme} onCompleteTask={onCompleteTask} onPlayFlashcard={onPlayFlashcard} processingTasks={new Set()} />}
+      {tasks.length > 0 && !isPlaying && <TaskPopup userProfile={userProfile} tasks={tasks} currentTheme={currentTheme} onCompleteTask={onCompleteTask} onPlayFlashcard={onPlayFlashcard} processingTasks={processingTasks} />}
     </div>
   );
 };
 
-const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose, onDeleteTask, onUpdateProfile, onManageLibrary, onDataChange, sessionUid, onForceSync }) => {
-    const [activeTab, setActiveTab] = useState('library'); 
+const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose, onDeleteTask, onUpdateProfile, onManageLibrary, onDataChange, sessionUid, onForceSync, onPromoteTask }) => {
+    const [activeTab, setActiveTab] = useState('plan'); 
     const [saveStatus, setSaveStatus] = useState(''); 
     
-    // Form States
+    // Config states
+    const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
+    const [pushEnd, setPushEnd] = useState(userProfile.pushEndHour || 21);
+    const [dailyLimit, setDailyLimit] = useState(userProfile.dailyLimit || 10);
+    const [taskProbabilities, setTaskProbabilities] = useState(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
+    
+    // Theme States
+    const [themeMascot, setThemeMascot] = useState(userProfile.themeConfig?.mascot || '');
+    const [themeBg, setThemeBg] = useState(userProfile.themeConfig?.background || '');
+    const [assistantName, setAssistantName] = useState(userProfile.themeConfig?.assistantName || '');
+    
+    // Add Task States
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [newTaskType, setNewTaskType] = useState('generic');
     const [newTaskReward, setNewTaskReward] = useState(20);
@@ -469,23 +522,9 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const [flashcardAudio, setFlashcardAudio] = useState('');
     const [batchWords, setBatchWords] = useState('');
     const [uploading, setUploading] = useState(false);
-    
-    // Config states
-    const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
-    const [pushEnd, setPushEnd] = useState(userProfile.pushEndHour || 21);
-    const [dailyLimit, setDailyLimit] = useState(userProfile.dailyLimit || 10);
-    // 🛡️ 修复：使用 ?. 和 || 确保不崩溃
-    const [taskProbabilities, setTaskProbabilities] = useState(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
-    
-    // Theme States
-    const [themeMascot, setThemeMascot] = useState(userProfile.themeConfig?.mascot || '');
-    const [themeBg, setThemeBg] = useState(userProfile.themeConfig?.background || '');
-    const [assistantName, setAssistantName] = useState(userProfile.themeConfig?.assistantName || '');
-    
-    // Ref 定义修复
+
     const mascotInputRef = useRef(null);
     const bgInputRef = useRef(null);
-    const fileInputRef = useRef(null);
 
     const safeTasks = Array.isArray(tasks) ? tasks : [];
     const safeLibrary = Array.isArray(libraryItems) ? libraryItems : [];
@@ -494,21 +533,6 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const upcomingTasks = safeLibrary.filter(item => item.nextReview && item.nextReview > Date.now()).sort((a,b) => a.nextReview - b.nextReview);
 
     const refresh = () => { if(onDataChange) onDataChange(); };
-
-    // 修复：确保 userProfile 变化时更新 state
-    useEffect(() => {
-       if (userProfile) {
-          setPushStart(userProfile.pushStartHour || 19);
-          setPushEnd(userProfile.pushEndHour || 21);
-          setDailyLimit(userProfile.dailyLimit || 10);
-          setTaskProbabilities(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
-          if(userProfile.themeConfig) {
-             setThemeMascot(userProfile.themeConfig.mascot || '');
-             setThemeBg(userProfile.themeConfig.background || '');
-             setAssistantName(userProfile.themeConfig.assistantName || '');
-          }
-       }
-    }, [userProfile]);
 
     const handleUpload = async (e, type) => {
        const file = e.target.files[0];
@@ -523,21 +547,12 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     };
 
     const handleSaveTheme = () => {
-      try {
-        onUpdateProfile({ 
-          themeConfig: {
-            mascot: themeMascot,
-            background: themeBg,
-            assistantName: assistantName
-          }
-        });
-        setSaveStatus('theme');
-        setTimeout(() => setSaveStatus(''), 2000);
-        alert("✅ 主题已更新！");
-      } catch (e) {
-        console.error(e);
-        alert("保存失败，请重试");
-      }
+      onUpdateProfile({ 
+        themeConfig: { mascot: themeMascot, background: themeBg, assistantName: assistantName }
+      });
+      setSaveStatus('theme');
+      setTimeout(() => setSaveStatus(''), 2000);
+      alert("✅ 主题已更新！");
     };
 
     const handlePush = (e) => { e.preventDefault(); onAddTask({ title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), image: newTaskType==='generic'?flashcardImg:undefined, flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已推送'); refresh(); };
@@ -545,16 +560,30 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const handleBatchAddWords = () => { if (!batchWords.trim()) return; const words = batchWords.split(/[,，\n]/).map(w => w.trim()).filter(w => w); const batchTime = getNextBeijingScheduleTime(parseInt(pushStart)); let count = 0; words.forEach(word => { const enrichedData = enrichWordTask(word); onManageLibrary('add', { title: `练习单词: ${enrichedData.word}`, type: 'english', reward: 20, flashcardData: enrichedData, memoryLevel: 0, nextReview: batchTime }); count++; }); alert(`成功生成 ${count} 个任务！`); setBatchWords(''); refresh(); };
     const handleSaveConfig = () => { onUpdateProfile({ taskProbabilities, pushStartHour: parseInt(pushStart), pushEndHour: parseInt(pushEnd), dailyLimit: parseInt(dailyLimit) }); alert("保存成功"); };
     
-    const handleExport = () => { const BOM = "\uFEFF"; const rows = safeLibrary.map(item => `${(item.title||"").replace(/,/g,"，")},${item.type||"generic"},${item.reward||10},${item.flashcardData?.word||""}`); const blob = new Blob([BOM + "标题,类型,奖励,单词\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = "tasks.csv"; document.body.appendChild(link); link.click(); link.remove(); };
-    const handleBackup = () => { const data = LocalDB.get(); const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_${Date.now()}.json`; document.body.appendChild(link); link.click(); link.remove(); };
-    const handleRestore = (e) => { const file = e.target.files[0]; if(!file)return; const reader = new FileReader(); reader.onload = (ev) => { try { LocalDB.restore(JSON.parse(ev.target.result)); } catch { alert("文件错误"); } }; reader.readAsText(file); };
-    
-    const handleLogout = () => { if(confirm("确定要退出登录吗？")) window.location.reload(); };
+    // “立即推送”功能
+    const handlePromote = (libraryItem) => {
+        onPromoteTask(libraryItem);
+        alert("已插队推送！手机端即刻可见。");
+        refresh();
+    };
 
     return (<div className="fixed inset-0 bg-slate-100 z-50 p-4 overflow-y-auto">
       <div className="flex justify-between mb-4"><h2 className="font-bold text-slate-800">家长后台</h2><button onClick={onClose}><XCircle/></button></div>
-      <div className="flex gap-2 mb-4 overflow-x-auto">{['library','theme','config','plan','monitor'].map(t=><button key={t} onClick={()=>setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold capitalize whitespace-nowrap ${activeTab===t?'bg-blue-600 text-white':'bg-white text-slate-600'}`}>{t}</button>)}</div>
+      <div className="flex gap-2 mb-4 overflow-x-auto">{['plan','library','monitor','theme','config'].map(t=><button key={t} onClick={()=>setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold capitalize whitespace-nowrap ${activeTab===t?'bg-blue-600 text-white':'bg-white text-slate-600'}`}>{t}</button>)}</div>
       
+      {activeTab==='plan' && <div className="bg-white p-4 rounded shadow">
+         <h3 className="font-bold mb-2">待推送队列</h3>
+         {upcomingTasks.length===0?<p className="text-slate-400 text-sm">无到期任务</p>:upcomingTasks.map(i=>(
+            <div key={i.id} className="p-3 border-b flex justify-between items-center hover:bg-slate-50">
+               <div>
+                  <div className="font-bold text-sm">{i.title}</div>
+                  <div className="text-[10px] text-slate-400">计划于: {getScheduledTimeDisplay(pushStart, i.nextReview)}</div>
+               </div>
+               <button onClick={() => handlePromote(i)} className="bg-green-100 text-green-700 px-3 py-1 rounded text-xs font-bold border border-green-200">立即推送</button>
+            </div>
+         ))}
+      </div>}
+
       {activeTab==='library' && <div className="space-y-6">
          <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><h3 className="font-bold mb-2 flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3><textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词，逗号分隔 (如: apple, banana)"/><button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成</button></div>
          <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-slate-300">
@@ -591,10 +620,9 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
         </div>
         <div className="border-t pt-4"><label className="text-xs text-slate-500 block mb-2">随机任务概率</label>{['english','sport','life'].map(type=>(<div key={type} className="flex items-center gap-2 mb-2"><span className="text-xs w-12 capitalize">{type}</span><input type="range" className="flex-1" min="0" max="100" value={taskProbabilities?.[type]||30} onChange={e=>setTaskProbabilities(p=>({...p,[type]:parseInt(e.target.value)}))}/><span className="text-xs w-8">{taskProbabilities?.[type]}%</span></div>))}</div>
         <button onClick={handleSaveConfig} className="bg-slate-800 text-white w-full py-3 rounded font-bold">保存配置</button>
-        <div className="border-t pt-4 grid grid-cols-2 gap-3"><button onClick={handleBackup} className="p-3 bg-slate-100 rounded text-xs font-bold">备份数据</button><button onClick={()=>fileInputRef.current.click()} className="p-3 bg-slate-100 rounded text-xs font-bold">恢复数据</button><input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div>
+        <div className="border-t pt-4 grid grid-cols-2 gap-3"><button onClick={handleBackup} className="p-3 bg-slate-100 rounded text-xs font-bold">备份数据</button><button onClick={handleRestore} className="p-3 bg-slate-100 rounded text-xs font-bold">恢复数据</button></div>
         <div className="pt-4 border-t flex justify-between"><button onClick={onForceSync} className="text-blue-600 text-xs flex gap-1"><Cloud size={14}/> 强制覆盖云端数据</button><button onClick={handleLogout} className="text-red-500 text-xs">退出</button></div></div>}
       
-      {activeTab==='plan' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">待推送队列</h3>{libraryItems.filter(i=>i.nextReview<=Date.now()).length===0?<p className="text-slate-400 text-sm">无到期任务</p>:libraryItems.filter(i=>i.nextReview<=Date.now()).map(i=><div key={i.id} className="p-2 border-b text-sm">{i.title}</div>)}</div>}
       {activeTab==='monitor' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">实时待办</h3>{pendingTasks.map(t=><div key={t.id} className="p-2 border-b flex justify-between items-center"><span className="text-sm">{t.title}</span><button onClick={()=>onDeleteTask(t.id)} className="text-red-500 text-xs border px-2 py-1 rounded">撤回</button></div>)}</div>}
       {activeTab==='history' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">完成记录</h3>{completedTasks.map(t=><div key={t.id} className="p-2 border-b text-sm flex justify-between"><span>{t.title}</span><span className="text-green-600">{formatTime(t.completedAt)}</span></div>)}</div>}
     </div>);
@@ -655,14 +683,30 @@ export default function App() {
   const [showCollection, setShowCollection] = useState(false);
   const [rewardData, setRewardData] = useState(null);
 
+  // --- 1. 初始化加载 ---
   useEffect(() => {
     const saved = localStorage.getItem('go_domi_session');
     if (saved) {
        const s = JSON.parse(saved);
        setSession(s);
+       // 立即拉取一次
        CloudAPI.fetchData(s.uid).then(d => { setData(d); setLoading(false); });
     } else { setLoading(false); }
   }, []);
+
+  // --- 2. 自动心跳同步 (Auto Pull) ---
+  // 解决问题1：手机端每 10 秒自动拉取一次最新数据，确保家长推送的任务能及时显示
+  useEffect(() => {
+    if (!session || !SERVER_IP) return;
+    const interval = setInterval(async () => {
+       const newData = await CloudAPI.fetchData(session.uid);
+       if (newData && JSON.stringify(newData) !== JSON.stringify(data)) {
+          // 仅当数据有变化时才更新，避免无效渲染
+          setData(newData);
+       }
+    }, 10000); // 10秒一次
+    return () => clearInterval(interval);
+  }, [session, data]); // 依赖 data 用于对比
 
   const handleLogin = async (s) => {
     localStorage.setItem('go_domi_session', JSON.stringify(s));
@@ -670,13 +714,48 @@ export default function App() {
     setData(s.initialData); 
   };
 
+  const handleLogout = () => {
+    if(confirm("确定要退出登录吗？")) {
+       LocalDB.clear(); 
+       window.location.reload(); 
+    }
+  };
+
   const persist = (newData) => { setData(newData); CloudAPI.sync(session.uid, newData, session.mode); };
   
   const handleForceSync = async () => {
     if(!session) return;
     if(confirm("确定要将当前设备的本地数据覆盖到云端吗？")) {
-       await CloudAPI.sync(session.uid, data, 'force'); // 强制云端同步
+       await CloudAPI.sync(session.uid, data, 'force');
        alert("已强制同步到云端！");
+    }
+  };
+  
+  // 解决问题3：插队推送
+  const handlePromoteTask = (libraryItem) => {
+    const newData = { ...data };
+    // 检查是否已经在 pending 列表中
+    const existing = newData.tasks.find(t => t.libraryId === libraryItem.id && t.status === 'pending');
+    if (!existing) {
+       // 如果不在，插入队首
+       const newTask = {
+          ...libraryItem,
+          id: generateId(),
+          status: 'pending',
+          createdAt: Date.now(),
+          libraryId: libraryItem.id,
+          source: 'manual_promote'
+       };
+       // 使用 unshift 插入到数组最前面，优先显示
+       newData.tasks.unshift(newTask);
+       
+       // 更新 library item 的下次复习时间（可选，这里设为推迟一天）
+       const libIdx = newData.library.findIndex(i => i.id === libraryItem.id);
+       if(libIdx >= 0) {
+           newData.library[libIdx].nextReview = Date.now() + 24 * 60 * 60 * 1000;
+       }
+       
+       persist(newData);
     }
   };
 
@@ -705,7 +784,6 @@ export default function App() {
   const handleAddTask = (item) => { const newData={...data}; newData.tasks.push({...item, id:generateId(), status:'pending'}); persist(newData); };
   const handleDeleteTask = (id) => { const newData={...data}; newData.tasks=newData.tasks.filter(t=>t.id!==id); persist(newData); };
   const handleUpdateProfile = (u) => { const newData={...data}; newData.user={...newData.user,...u}; persist(newData); };
-  const handleLogout = () => { if(confirm("确定要退出登录吗？")){ localStorage.removeItem('go_domi_session'); window.location.reload(); }};
 
   if (loading) return <LoadingScreen />;
   if (!session) return <LoginScreen onLogin={handleLogin} />;
@@ -727,7 +805,7 @@ export default function App() {
           onForceSync={handleForceSync}
           onLogout={handleLogout}
         />
-        {isParentMode && <ParentDashboard userProfile={data.user} tasks={data.tasks} libraryItems={data.library} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} onUpdateProfile={handleUpdateProfile} onManageLibrary={handleManageLibrary} onClose={() => setIsParentMode(false)} onDataChange={() => setData(LocalDB.get())} sessionUid={session.uid} onForceSync={handleForceSync}/>}
+        {isParentMode && <ParentDashboard userProfile={data.user} tasks={data.tasks} libraryItems={data.library} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} onUpdateProfile={handleUpdateProfile} onManageLibrary={handleManageLibrary} onClose={() => setIsParentMode(false)} onDataChange={() => setData(LocalDB.get())} sessionUid={session.uid} onForceSync={handleForceSync} onPromoteTask={handlePromoteTask} />}
         {activeFlashcardTask && <FlashcardGame task={activeFlashcardTask} onClose={() => setActiveFlashcardTask(null)} onComplete={handleComplete} />}
         {rewardData && <RewardModal rewards={rewardData} onClose={() => setRewardData(null)} />}
         {showCollection && <CollectionModal collection={data.collection || {}} onClose={() => setShowCollection(false)} />}
