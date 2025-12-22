@@ -5,16 +5,13 @@ import {
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
   Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
-  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal
+  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe, Info
 } from 'lucide-react';
 
 // ==========================================
 // --- 0. 基础配置 ---
 // ==========================================
 
-// ⚠️ 生产环境配置: 
-// 填写您的腾讯云服务器地址 (例如 http://43.143.74.76:3000)
-// 注意：如果您的前端是 HTTPS (如 Vercel)，后端也必须是 HTTPS，否则会被浏览器拦截！
 const SERVER_IP = 'http://43.143.74.76:3000'; 
 const BACKEND_HOST = '43.143.74.76:3000';
 
@@ -52,18 +49,14 @@ const GlobalStyles = () => (
 );
 
 // --- 核心工具：智能 URL 处理 ---
-// forceDirect: 强制使用 SERVER_IP (用于调试)
 const getApiEndpoint = (path, forceDirect = false) => {
-  // 1. 本地调试 (localhost): 直连 IP
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
      return SERVER_IP ? `${SERVER_IP}${path}` : path;
   }
-  // 2. 强制直连模式 (仅用于诊断)
   if (forceDirect) {
      return `${SERVER_IP}${path}`;
   }
-  // 3. 线上生产 (Vercel): 强制使用相对路径，依赖 vercel.json 转发
-  return path;
+  return path; // 线上环境默认走相对路径 (Vercel Proxy)
 };
 
 const proxifyUrl = (url) => {
@@ -130,8 +123,14 @@ const DEFAULT_USER_DATA = {
 
 const sanitizeData = (incomingData) => {
   if (!incomingData) return DEFAULT_USER_DATA;
+  const safeUser = incomingData.user || {};
   return {
-    user: { ...DEFAULT_USER_DATA.user, ...incomingData.user, themeConfig: { ...DEFAULT_USER_DATA.user.themeConfig, ...incomingData.user?.themeConfig } },
+    user: { 
+        ...DEFAULT_USER_DATA.user, 
+        ...safeUser, 
+        themeConfig: { ...DEFAULT_USER_DATA.user.themeConfig, ...safeUser.themeConfig },
+        taskProbabilities: { ...DEFAULT_USER_DATA.user.taskProbabilities, ...safeUser.taskProbabilities }
+    },
     tasks: Array.isArray(incomingData.tasks) ? incomingData.tasks : [],
     library: Array.isArray(incomingData.library) ? incomingData.library : [],
     collection: { ...DEFAULT_USER_DATA.collection, ...incomingData.collection }
@@ -184,25 +183,24 @@ const CloudAPI = {
         return { uid: username, token: result.token, initialData: safeData, mode: 'cloud' };
       } else {
         if (res.status === 404 && !forceDirect) {
-             throw new Error("404: 代理失败 (缺少 vercel.json 或路径错误)");
+             throw new Error(`404: 接口未找到。请检查 Vercel Rewrites 配置。请求地址: ${endpoint}`);
         }
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
     } catch (e) { 
       console.warn("Cloud login failed:", e);
-      let warning = `连接失败 (${e.message})。已切换至离线模式。`;
+      let warning = `连接失败 (${e.message})。`;
       
       if (e.message.includes('Failed to fetch') && window.location.protocol === 'https:' && forceDirect) {
-          warning = '安全拦截: HTTPS 无法直连 HTTP IP。请关闭“强制直连”并检查 vercel.json。';
+          warning = '安全拦截: HTTPS 无法直连 HTTP IP。';
       }
       
-      return { uid: username, token: 'offline', initialData: LocalDB.get(), mode: 'offline', warning }; 
+      return { uid: username, token: 'offline', initialData: LocalDB.get(), mode: 'offline', warning, debugInfo: e.message }; 
     }
   },
   fetchData: async (username) => {
-     const endpoint = getApiEndpoint('/api/login');
      try {
-       const res = await fetch(endpoint, {
+       const res = await fetch(getApiEndpoint('/api/login'), {
          method: 'POST', headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify({ username })
        });
@@ -217,17 +215,15 @@ const CloudAPI = {
   },
   sync: async (username, data, mode) => {
     LocalDB.save(data);
-    const endpoint = getApiEndpoint('/api/sync');
     if (mode === 'cloud' || mode === 'force') {
-      try { await fetch(endpoint, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username, data }) }); } catch (e) { console.error("Sync failed", e); }
+      try { await fetch(getApiEndpoint('/api/sync'), { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username, data }) }); } catch (e) { console.error("Sync failed", e); }
     }
   },
   upload: async (file) => {
-    const endpoint = getApiEndpoint('/api/upload');
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch(endpoint, { method: 'POST', body: formData });
+      const res = await fetch(getApiEndpoint('/api/upload'), { method: 'POST', body: formData });
       if (res.ok) {
         const result = await res.json();
         return result.url; 
@@ -327,6 +323,7 @@ const LoginScreen = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [debugInfo, setDebugInfo] = useState('');
   const [useDirect, setUseDirect] = useState(false); // 调试：强制直连
 
   const handleSubmit = async (e) => {
@@ -334,12 +331,17 @@ const LoginScreen = ({ onLogin }) => {
     if (!username.trim()) return;
     setLoading(true);
     setErrorMsg('');
+    setDebugInfo('');
     try {
       const session = await CloudAPI.login(username.trim(), useDirect);
-      if (session.warning) setErrorMsg(session.warning);
+      if (session.warning) {
+          setErrorMsg(session.warning);
+          setDebugInfo(session.debugInfo || '');
+      }
+      
       // 延迟跳转，确保用户看到错误提示
       if (session.mode === 'offline') {
-        setTimeout(() => onLogin(session), 2500);
+        setTimeout(() => onLogin(session), 3000);
       } else {
         onLogin(session);
       }
@@ -355,7 +357,7 @@ const LoginScreen = ({ onLogin }) => {
       <div className="relative z-10 w-full max-w-sm bg-slate-800/50 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V17.8 (完整版)</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V17.8</p>
         
         {SERVER_IP && (
             <div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between">
@@ -388,9 +390,9 @@ const LoginScreen = ({ onLogin }) => {
         </form>
 
         {errorMsg && (
-           <div className="mt-4 p-3 bg-red-900/50 border border-red-500/50 rounded-xl text-red-200 text-xs flex items-start gap-2 animate-in slide-in-from-top-2">
-              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-              <span>{errorMsg}</span>
+           <div className="mt-4 p-3 bg-red-900/50 border border-red-500/50 rounded-xl text-red-200 text-xs flex flex-col gap-1 animate-in slide-in-from-top-2">
+              <div className="flex items-start gap-2 font-bold"><AlertTriangle size={16} className="shrink-0 mt-0.5" /> <span>{errorMsg}</span></div>
+              {debugInfo && <div className="text-[10px] opacity-70 break-all font-mono pl-6">{debugInfo}</div>}
            </div>
         )}
         
@@ -445,32 +447,10 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} flex flex-col relative`}>
       <DynamicBackground themeId="cosmic" customBg={bgImg} />
       {isPatrolling && <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60"><div className="w-[300px] h-[300px] border-4 border-green-500 rounded-full animate-ping"></div><div className="mt-8 text-green-400 font-mono text-2xl font-black animate-pulse">SCANNING...</div></div>}
-      
-      {/* 顶部状态栏 */}
-      <div 
-        onClick={onForceSync}
-        className={`w-full py-1 text-center text-[10px] font-bold cursor-pointer transition-colors ${connectionMode === 'cloud' ? 'bg-green-600 text-white' : 'bg-red-600 text-white animate-pulse'}`}
-      >
-         {connectionMode === 'cloud' ? '🟢 基地在线' : `🔴 ${connectionMode === 'offline' ? '离线模式' : '连接异常'} (点击重试)`}
-      </div>
-
-      <div className="w-full p-4 flex justify-between items-center bg-black/20 backdrop-blur-md z-10">
-         <div className="flex items-center gap-3">
-            <button onClick={onLogout} className="w-8 h-8 rounded-full bg-slate-800/80 flex items-center justify-center border border-white/20 text-red-400 mr-2 hover:bg-slate-700 transition-colors"><LogOut size={14}/></button>
-            <div className="w-14 h-14 bg-white/10 rounded-full overflow-hidden"><img src={mascotImg} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none';e.target.nextSibling.style.display='block'}}/><Rocket className="text-yellow-400 hidden" size={32}/></div><div><div className="font-bold">多米队长</div><div className="text-xs opacity-70">Lv.{userProfile.level}</div></div>
-         </div>
-         <div className="flex gap-3"><div className="flex items-center gap-1 bg-black/40 px-3 py-1 rounded-full"><Zap size={14} className="text-yellow-400"/><span className="font-bold text-yellow-400">{userProfile.coins}</span></div><button onClick={toggleParentMode}><Settings size={20}/></button></div>
-      </div>
-      <div className="flex-1 relative z-10 flex flex-col">
-         <div className="px-6 mt-4"><div className="w-full bg-black/40 h-3 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{width: `${progressPercent}%`}}></div></div></div>
-         <GrowingCrystal level={userProfile.level} xp={userProfile.xp} onClick={() => speak(currentTheme.currency)} />
-         <div className="fixed bottom-6 w-full flex justify-center gap-6 items-end pb-4 pointer-events-none">
-            <button onClick={()=>onOpenCollection('puzzle')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><Puzzle className="text-yellow-400"/></button>
-            <button onClick={onStartPatrol} disabled={isPatrolling} className="pointer-events-auto w-24 h-24 bg-blue-600 rounded-full flex flex-col items-center justify-center border-4 border-blue-400 shadow-xl mb-2"><Radar className="text-white w-10 h-10"/><span className="text-[10px] font-black uppercase mt-1">巡逻</span></button>
-            <button onClick={()=>onOpenCollection('cards')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><BookOpen className="text-blue-400"/></button>
-         </div>
-      </div>
-      {displayTasks.length > 0 && !isPlaying && <TaskPopup userProfile={userProfile} tasks={displayTasks} currentTheme={currentTheme} onCompleteTask={onCompleteTask} onPlayFlashcard={onPlayFlashcard} processingTasks={processingTasks} />}
+      <div onClick={onForceSync} className={`w-full py-1 text-center text-[10px] font-bold cursor-pointer transition-colors ${connectionMode === 'cloud' ? 'bg-green-600 text-white' : 'bg-red-600 text-white animate-pulse'}`}>{connectionMode === 'cloud' ? '🟢 基地在线' : `🔴 ${connectionMode === 'offline' ? '离线模式' : '连接异常'} (点击重试)`}</div>
+      <div className="w-full p-4 flex justify-between items-center bg-black/20 backdrop-blur-md z-10"><div className="flex items-center gap-3"><button onClick={onLogout} className="w-8 h-8 rounded-full bg-slate-800/80 flex items-center justify-center border border-white/20 text-red-400 mr-2 hover:bg-slate-700 transition-colors"><LogOut size={14}/></button><div className="w-14 h-14 bg-white/10 rounded-full overflow-hidden"><img src={mascotImg} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none';e.target.nextSibling.style.display='block'}}/><Rocket className="text-yellow-400 hidden" size={32}/></div><div><div className="font-bold">多米队长</div><div className="text-xs opacity-70">Lv.{userProfile.level}</div></div></div><div className="flex gap-3"><div className="flex items-center gap-1 bg-black/40 px-3 py-1 rounded-full"><Zap size={14} className="text-yellow-400"/><span className="font-bold text-yellow-400">{userProfile.coins}</span></div><button onClick={toggleParentMode}><Settings size={20}/></button></div></div>
+      <div className="flex-1 relative z-10 flex flex-col"><div className="px-6 mt-4"><div className="w-full bg-black/40 h-3 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{width: `${progressPercent}%`}}></div></div></div><GrowingCrystal level={userProfile.level} xp={userProfile.xp} onClick={() => speak(currentTheme.currency)} /><div className="fixed bottom-6 w-full flex justify-center gap-6 items-end pb-4 pointer-events-none"><button onClick={()=>onOpenCollection('puzzle')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><Puzzle className="text-yellow-400"/></button><button onClick={onStartPatrol} disabled={isPatrolling} className="pointer-events-auto w-24 h-24 bg-blue-600 rounded-full flex flex-col items-center justify-center border-4 border-blue-400 shadow-xl mb-2"><Radar className="text-white w-10 h-10"/><span className="text-[10px] font-black uppercase mt-1">巡逻</span></button><button onClick={()=>onOpenCollection('cards')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><BookOpen className="text-blue-400"/></button></div></div>
+      {tasks.length > 0 && !isPlaying && <TaskPopup userProfile={userProfile} tasks={displayTasks} currentTheme={currentTheme} onCompleteTask={onCompleteTask} onPlayFlashcard={onPlayFlashcard} processingTasks={new Set()} />}
     </div>
   );
 };
@@ -494,6 +474,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
     const [pushEnd, setPushEnd] = useState(userProfile.pushEndHour || 21);
     const [dailyLimit, setDailyLimit] = useState(userProfile.dailyLimit || 10);
+    // 🛡️ 修复：使用 ?. 和 || 确保不崩溃
     const [taskProbabilities, setTaskProbabilities] = useState(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
     
     // Theme States
@@ -501,6 +482,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const [themeBg, setThemeBg] = useState(userProfile.themeConfig?.background || '');
     const [assistantName, setAssistantName] = useState(userProfile.themeConfig?.assistantName || '');
     
+    // Ref 定义修复
     const mascotInputRef = useRef(null);
     const bgInputRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -512,6 +494,21 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const upcomingTasks = safeLibrary.filter(item => item.nextReview && item.nextReview > Date.now()).sort((a,b) => a.nextReview - b.nextReview);
 
     const refresh = () => { if(onDataChange) onDataChange(); };
+
+    // 修复：确保 userProfile 变化时更新 state
+    useEffect(() => {
+       if (userProfile) {
+          setPushStart(userProfile.pushStartHour || 19);
+          setPushEnd(userProfile.pushEndHour || 21);
+          setDailyLimit(userProfile.dailyLimit || 10);
+          setTaskProbabilities(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
+          if(userProfile.themeConfig) {
+             setThemeMascot(userProfile.themeConfig.mascot || '');
+             setThemeBg(userProfile.themeConfig.background || '');
+             setAssistantName(userProfile.themeConfig.assistantName || '');
+          }
+       }
+    }, [userProfile]);
 
     const handleUpload = async (e, type) => {
        const file = e.target.files[0];
@@ -526,16 +523,21 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     };
 
     const handleSaveTheme = () => {
-      onUpdateProfile({ 
-        themeConfig: {
-          mascot: themeMascot,
-          background: themeBg,
-          assistantName: assistantName
-        }
-      });
-      setSaveStatus('theme');
-      setTimeout(() => setSaveStatus(''), 2000);
-      alert("✅ 主题已更新！");
+      try {
+        onUpdateProfile({ 
+          themeConfig: {
+            mascot: themeMascot,
+            background: themeBg,
+            assistantName: assistantName
+          }
+        });
+        setSaveStatus('theme');
+        setTimeout(() => setSaveStatus(''), 2000);
+        alert("✅ 主题已更新！");
+      } catch (e) {
+        console.error(e);
+        alert("保存失败，请重试");
+      }
     };
 
     const handlePush = (e) => { e.preventDefault(); onAddTask({ title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), image: newTaskType==='generic'?flashcardImg:undefined, flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已推送'); refresh(); };
@@ -547,6 +549,8 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const handleBackup = () => { const data = LocalDB.get(); const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_${Date.now()}.json`; document.body.appendChild(link); link.click(); link.remove(); };
     const handleRestore = (e) => { const file = e.target.files[0]; if(!file)return; const reader = new FileReader(); reader.onload = (ev) => { try { LocalDB.restore(JSON.parse(ev.target.result)); } catch { alert("文件错误"); } }; reader.readAsText(file); };
     
+    const handleLogout = () => { if(confirm("确定要退出登录吗？")) window.location.reload(); };
+
     return (<div className="fixed inset-0 bg-slate-100 z-50 p-4 overflow-y-auto">
       <div className="flex justify-between mb-4"><h2 className="font-bold text-slate-800">家长后台</h2><button onClick={onClose}><XCircle/></button></div>
       <div className="flex gap-2 mb-4 overflow-x-auto">{['library','theme','config','plan','monitor'].map(t=><button key={t} onClick={()=>setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold capitalize whitespace-nowrap ${activeTab===t?'bg-blue-600 text-white':'bg-white text-slate-600'}`}>{t}</button>)}</div>
@@ -585,7 +589,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
            <div><label className="text-xs text-slate-500">结束时间</label><input className="border w-full p-2 rounded" type="number" value={pushEnd} onChange={e=>setPushEnd(e.target.value)}/></div>
            <div className="col-span-2"><label className="text-xs text-slate-500">每日上限</label><input className="border w-full p-2 rounded" type="number" value={dailyLimit} onChange={e=>setDailyLimit(e.target.value)}/></div>
         </div>
-        <div className="border-t pt-4"><label className="text-xs text-slate-500 block mb-2">随机任务概率</label>{['english','sport','life'].map(type=>(<div key={type} className="flex items-center gap-2 mb-2"><span className="text-xs w-12 capitalize">{type}</span><input type="range" className="flex-1" min="0" max="100" value={taskProbabilities[type]} onChange={e=>setTaskProbabilities(p=>({...p,[type]:parseInt(e.target.value)}))}/><span className="text-xs w-8">{taskProbabilities[type]}%</span></div>))}</div>
+        <div className="border-t pt-4"><label className="text-xs text-slate-500 block mb-2">随机任务概率</label>{['english','sport','life'].map(type=>(<div key={type} className="flex items-center gap-2 mb-2"><span className="text-xs w-12 capitalize">{type}</span><input type="range" className="flex-1" min="0" max="100" value={taskProbabilities?.[type]||30} onChange={e=>setTaskProbabilities(p=>({...p,[type]:parseInt(e.target.value)}))}/><span className="text-xs w-8">{taskProbabilities?.[type]}%</span></div>))}</div>
         <button onClick={handleSaveConfig} className="bg-slate-800 text-white w-full py-3 rounded font-bold">保存配置</button>
         <div className="border-t pt-4 grid grid-cols-2 gap-3"><button onClick={handleBackup} className="p-3 bg-slate-100 rounded text-xs font-bold">备份数据</button><button onClick={()=>fileInputRef.current.click()} className="p-3 bg-slate-100 rounded text-xs font-bold">恢复数据</button><input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div>
         <div className="pt-4 border-t flex justify-between"><button onClick={onForceSync} className="text-blue-600 text-xs flex gap-1"><Cloud size={14}/> 强制覆盖云端数据</button><button onClick={handleLogout} className="text-red-500 text-xs">退出</button></div></div>}
@@ -671,7 +675,7 @@ export default function App() {
   const handleForceSync = async () => {
     if(!session) return;
     if(confirm("确定要将当前设备的本地数据覆盖到云端吗？")) {
-       await CloudAPI.sync(session.uid, data, 'force');
+       await CloudAPI.sync(session.uid, data, 'force'); // 强制云端同步
        alert("已强制同步到云端！");
     }
   };
