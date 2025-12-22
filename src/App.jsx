@@ -21,20 +21,49 @@ const GlobalStyles = () => (
     html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; max-width: none !important; overflow-x: hidden; font-family: system-ui, -apple-system, sans-serif; background-color: #0f172a; }
     ::-webkit-scrollbar { width: 0px; background: transparent; }
     
-    @keyframes shine { 0% { transform: translateX(-100%) rotate(45deg); } 100% { transform: translateX(200%) rotate(45deg); } }
+    @keyframes shine { 
+      0% { transform: translateX(-100%) rotate(45deg); } 
+      100% { transform: translateX(200%) rotate(45deg); } 
+    }
+    
     .shiny-card { position: relative; overflow: hidden; }
-    .shiny-card::after { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%); transform: translateX(-100%) rotate(45deg); animation: shine 3s infinite; }
+    .shiny-card::after { 
+      content: ""; 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%); 
+      transform: translateX(-100%) rotate(45deg); 
+      animation: shine 3s infinite; 
+    }
     
-    @keyframes scan { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
-    .scan-line { background: linear-gradient(to bottom, transparent, rgba(239, 68, 68, 0.5), transparent); animation: scan 3s linear infinite; }
-    .hazard-stripes { background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px); background-size: 50px 50px; }
+    @keyframes scan { 
+      0% { transform: translateY(-100%); } 
+      100% { transform: translateY(100%); } 
+    }
     
-    @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .scan-line { 
+      background: linear-gradient(to bottom, transparent, rgba(239, 68, 68, 0.5), transparent); 
+      animation: scan 3s linear infinite; 
+    }
+    
+    .hazard-stripes { 
+      background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px); 
+      background-size: 50px 50px; 
+    }
+    
+    @keyframes spin-slow { 
+      from { transform: rotate(0deg); } 
+      to { transform: rotate(360deg); } 
+    }
     
     @keyframes shooting-star {
       0% { transform: translateX(0) translateY(0) rotate(45deg); opacity: 1; }
       100% { transform: translateX(-500px) translateY(500px) rotate(45deg); opacity: 0; }
     }
+    
     .shooting-star {
       position: absolute;
       width: 4px; height: 4px;
@@ -42,6 +71,7 @@ const GlobalStyles = () => (
       box-shadow: 0 0 0 4px rgba(255,255,255,0.1), 0 0 0 8px rgba(255,255,255,0.1), 0 0 20px rgba(255,255,255,1);
       animation: shooting-star 5s linear infinite;
     }
+    
     .shooting-star::before {
       content: ''; position: absolute; top: 50%; transform: translateY(-50%); right: 0; width: 200px; height: 1px;
       background: linear-gradient(to right, transparent, rgba(255,255,255,0.8));
@@ -54,7 +84,9 @@ const getApiEndpoint = (path, forceDirect = false) => {
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
      return SERVER_IP ? `${SERVER_IP}${path}` : path;
   }
-  if (forceDirect) return `${SERVER_IP}${path}`;
+  if (forceDirect) {
+     return `${SERVER_IP}${path}`;
+  }
   return path;
 };
 
@@ -71,8 +103,9 @@ const proxifyUrl = (url) => {
 // ==========================================
 // --- 1. 基础组件 ---
 // ==========================================
+
 const LoadingScreen = () => (
-  <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center text-white p-4 z-[100]">
+  <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-4">
     <div className="animate-bounce text-6xl mb-4">🚀</div>
     <h1 className="text-2xl font-bold animate-pulse">正在连接宇宙基地...</h1>
     <p className="text-slate-400 mt-2">系统初始化中</p>
@@ -98,9 +131,9 @@ class ErrorBoundary extends React.Component {
 }
 
 // ==========================================
-// --- 2. 数据引擎 ---
+// --- 2. 数据引擎与 API ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_data_v18_fixed'; 
+const STORAGE_KEY = 'go_domi_data_v17_robust'; 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
 const DEFAULT_USER_DATA = {
@@ -126,13 +159,12 @@ const sanitizeData = (incomingData) => {
     user: { 
         ...DEFAULT_USER_DATA.user, 
         ...safeUser, 
-        themeConfig: { ...DEFAULT_USER_DATA.user.themeConfig, ...(safeUser.themeConfig || {}) },
-        // 🛡️ 核心修复：确保 taskProbabilities 是对象，防止崩溃
-        taskProbabilities: { ...DEFAULT_USER_DATA.user.taskProbabilities, ...(safeUser.taskProbabilities || {}) }
+        themeConfig: { ...DEFAULT_USER_DATA.user.themeConfig, ...safeUser.themeConfig },
+        taskProbabilities: { ...DEFAULT_USER_DATA.user.taskProbabilities, ...safeUser.taskProbabilities }
     },
     tasks: Array.isArray(incomingData.tasks) ? incomingData.tasks : [],
     library: Array.isArray(incomingData.library) ? incomingData.library : [],
-    collection: { ...DEFAULT_USER_DATA.collection, ...(incomingData.collection || {}) }
+    collection: { ...DEFAULT_USER_DATA.collection, ...incomingData.collection }
   };
 };
 
@@ -146,12 +178,6 @@ const LocalDB = {
   save: (data) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     window.dispatchEvent(new Event('local-db-change'));
-  },
-  restore: (fullData) => {
-    if (!fullData || !fullData.user) { alert("无效的存档文件"); return; }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(fullData));
-    window.dispatchEvent(new Event('local-db-change'));
-    window.location.reload(); 
   },
   export: () => {
     const data = localStorage.getItem(STORAGE_KEY);
@@ -188,7 +214,7 @@ const CloudAPI = {
         return { uid: username, token: result.token, initialData: safeData, mode: 'cloud' };
       } else {
         if (res.status === 404 && !forceDirect) {
-             throw new Error(`404 错误: 找不到接口。请检查 vercel.json 是否上传到根目录。\n请求地址: ${endpoint}`);
+             throw new Error("404: 代理失败 (缺少 vercel.json 或路径错误)");
         }
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
@@ -204,8 +230,9 @@ const CloudAPI = {
     }
   },
   fetchData: async (username) => {
+     const endpoint = getApiEndpoint('/api/login');
      try {
-       const res = await fetch(getApiEndpoint('/api/login'), {
+       const res = await fetch(endpoint, {
          method: 'POST', headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify({ username })
        });
@@ -377,7 +404,7 @@ const LoginScreen = ({ onLogin }) => {
       <div className="relative z-10 w-full max-w-sm bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V18.3</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V18.5</p>
         
         {SERVER_IP && (
             <div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between">
@@ -510,6 +537,21 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
 
     const refresh = () => { if(onDataChange) onDataChange(); };
 
+    // 监听 userProfile 变化同步 state
+    useEffect(() => {
+        if(userProfile) {
+            setPushStart(userProfile.pushStartHour || 19);
+            setPushEnd(userProfile.pushEndHour || 21);
+            setDailyLimit(userProfile.dailyLimit || 10);
+            setTaskProbabilities(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
+            if(userProfile.themeConfig) {
+                setThemeMascot(userProfile.themeConfig.mascot || '');
+                setThemeBg(userProfile.themeConfig.background || '');
+                setAssistantName(userProfile.themeConfig.assistantName || '');
+            }
+        }
+    }, [userProfile]);
+
     const handleUpload = async (e, type) => {
        const file = e.target.files[0];
        if(!file) return;
@@ -518,18 +560,14 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
          const url = await CloudAPI.upload(file);
          if (type === 'mascot') setThemeMascot(url);
          if (type === 'bg') setThemeBg(url);
-         alert("上传成功!");
+         alert("上传成功! (请点击下方保存按钮应用)");
        } catch (err) { alert(err.message); } finally { setUploading(false); }
     };
 
     const handleSaveTheme = () => {
       try {
         onUpdateProfile({ 
-          themeConfig: {
-            mascot: themeMascot,
-            background: themeBg,
-            assistantName: assistantName
-          }
+          themeConfig: { mascot: themeMascot, background: themeBg, assistantName: assistantName }
         });
         setSaveStatus('theme');
         setTimeout(() => setSaveStatus(''), 2000);
@@ -554,10 +592,12 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
 
     const handleExport = () => { const BOM = "\uFEFF"; const rows = safeLibrary.map(item => `${(item.title||"").replace(/,/g,"，")},${item.type||"generic"},${item.reward||10},${item.flashcardData?.word||""}`); const blob = new Blob([BOM + "标题,类型,奖励,单词\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = "tasks.csv"; document.body.appendChild(link); link.click(); link.remove(); };
     const handleBackup = () => { const data = LocalDB.get(); const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_${Date.now()}.json`; document.body.appendChild(link); link.click(); link.remove(); };
-    // 修复：补全 handleRestore 实现
     const handleRestore = (e) => { const file = e.target.files[0]; if(!file)return; const reader = new FileReader(); reader.onload = (ev) => { try { LocalDB.restore(JSON.parse(ev.target.result)); } catch { alert("文件错误"); } }; reader.readAsText(file); };
     
     const handleLogout = () => { if(confirm("确定要退出登录吗？")) window.location.reload(); };
+
+    // 安全获取 taskProbabilities，防止为空
+    const safeProbs = taskProbabilities || { english: 50, sport: 30, life: 20 };
 
     return (<div className="fixed inset-0 bg-slate-100 z-50 p-4 overflow-y-auto">
       <div className="flex justify-between mb-4"><h2 className="font-bold text-slate-800">家长后台</h2><button onClick={onClose}><XCircle/></button></div>
@@ -610,7 +650,15 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
            <div><label className="text-xs text-slate-500">结束时间</label><input className="border w-full p-2 rounded" type="number" value={pushEnd} onChange={e=>setPushEnd(e.target.value)}/></div>
            <div className="col-span-2"><label className="text-xs text-slate-500">每日上限</label><input className="border w-full p-2 rounded" type="number" value={dailyLimit} onChange={e=>setDailyLimit(e.target.value)}/></div>
         </div>
-        <div className="border-t pt-4"><label className="text-xs text-slate-500 block mb-2">随机任务概率</label>{['english','sport','life'].map(type=>(<div key={type} className="flex items-center gap-2 mb-2"><span className="text-xs w-12 capitalize">{type}</span><input type="range" className="flex-1" min="0" max="100" value={taskProbabilities?.[type]||30} onChange={e=>setTaskProbabilities(p=>({...p,[type]:parseInt(e.target.value)}))}/><span className="text-xs w-8">{taskProbabilities?.[type]}%</span></div>))}</div>
+        <div className="border-t pt-4"><label className="text-xs text-slate-500 block mb-2">随机任务概率</label>
+        {['english','sport','life'].map(type=>(
+            <div key={type} className="flex items-center gap-2 mb-2">
+                <span className="text-xs w-12 capitalize">{type}</span>
+                <input type="range" className="flex-1" min="0" max="100" value={safeProbs[type]||30} onChange={e=>setTaskProbabilities(p=>({...p,[type]:parseInt(e.target.value)}))}/>
+                <span className="text-xs w-8">{safeProbs[type]}%</span>
+            </div>
+        ))}
+        </div>
         <button onClick={handleSaveConfig} className="bg-slate-800 text-white w-full py-3 rounded font-bold">保存配置</button>
         <div className="border-t pt-4 grid grid-cols-2 gap-3"><button onClick={handleBackup} className="p-3 bg-slate-100 rounded text-xs font-bold">备份数据</button><button onClick={()=>fileInputRef.current.click()} className="p-3 bg-slate-100 rounded text-xs font-bold">恢复数据</button><input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div>
         <div className="pt-4 border-t flex justify-between"><button onClick={onForceSync} className="text-blue-600 text-xs flex gap-1"><Cloud size={14}/> 强制覆盖云端数据</button><button onClick={handleLogout} className="text-red-500 text-xs">退出</button></div></div>}
@@ -702,7 +750,7 @@ export default function App() {
   const handleForceSync = async () => {
     if(!session) return;
     if(confirm("确定要将当前设备的本地数据覆盖到云端吗？")) {
-       await CloudAPI.sync(session.uid, data, 'force');
+       await CloudAPI.sync(session.uid, data, 'force'); // 强制云端同步
        alert("已强制同步到云端！");
     }
   };
@@ -732,6 +780,23 @@ export default function App() {
   const handleAddTask = (item) => { const newData={...data}; newData.tasks.push({...item, id:generateId(), status:'pending'}); persist(newData); };
   const handleDeleteTask = (id) => { const newData={...data}; newData.tasks=newData.tasks.filter(t=>t.id!==id); persist(newData); };
   const handleUpdateProfile = (u) => { const newData={...data}; newData.user={...newData.user,...u}; persist(newData); };
+  // 核心修复：提升状态
+  const handlePromoteTask = (libraryItem) => {
+    const newData = { ...data };
+    const existing = newData.tasks.find(t => t.libraryId === libraryItem.id && t.status === 'pending');
+    if (!existing) {
+       const newTask = {
+          ...libraryItem,
+          id: generateId(),
+          status: 'pending',
+          createdAt: Date.now(),
+          libraryId: libraryItem.id,
+          source: 'manual_promote'
+       };
+       newData.tasks.unshift(newTask);
+       persist(newData);
+    }
+  };
 
   if (loading) return <LoadingScreen />;
   if (!session) return <LoginScreen onLogin={handleLogin} />;
