@@ -21,49 +21,20 @@ const GlobalStyles = () => (
     html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; max-width: none !important; overflow-x: hidden; font-family: system-ui, -apple-system, sans-serif; background-color: #0f172a; }
     ::-webkit-scrollbar { width: 0px; background: transparent; }
     
-    @keyframes shine { 
-      0% { transform: translateX(-100%) rotate(45deg); } 
-      100% { transform: translateX(200%) rotate(45deg); } 
-    }
-    
+    @keyframes shine { 0% { transform: translateX(-100%) rotate(45deg); } 100% { transform: translateX(200%) rotate(45deg); } }
     .shiny-card { position: relative; overflow: hidden; }
-    .shiny-card::after { 
-      content: ""; 
-      position: absolute; 
-      top: 0; 
-      left: 0; 
-      width: 100%; 
-      height: 100%; 
-      background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%); 
-      transform: translateX(-100%) rotate(45deg); 
-      animation: shine 3s infinite; 
-    }
+    .shiny-card::after { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%); transform: translateX(-100%) rotate(45deg); animation: shine 3s infinite; }
     
-    @keyframes scan { 
-      0% { transform: translateY(-100%); } 
-      100% { transform: translateY(100%); } 
-    }
+    @keyframes scan { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+    .scan-line { background: linear-gradient(to bottom, transparent, rgba(239, 68, 68, 0.5), transparent); animation: scan 3s linear infinite; }
+    .hazard-stripes { background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px); background-size: 50px 50px; }
     
-    .scan-line { 
-      background: linear-gradient(to bottom, transparent, rgba(239, 68, 68, 0.5), transparent); 
-      animation: scan 3s linear infinite; 
-    }
-    
-    .hazard-stripes { 
-      background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px); 
-      background-size: 50px 50px; 
-    }
-    
-    @keyframes spin-slow { 
-      from { transform: rotate(0deg); } 
-      to { transform: rotate(360deg); } 
-    }
+    @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     
     @keyframes shooting-star {
       0% { transform: translateX(0) translateY(0) rotate(45deg); opacity: 1; }
       100% { transform: translateX(-500px) translateY(500px) rotate(45deg); opacity: 0; }
     }
-    
     .shooting-star {
       position: absolute;
       width: 4px; height: 4px;
@@ -71,7 +42,6 @@ const GlobalStyles = () => (
       box-shadow: 0 0 0 4px rgba(255,255,255,0.1), 0 0 0 8px rgba(255,255,255,0.1), 0 0 20px rgba(255,255,255,1);
       animation: shooting-star 5s linear infinite;
     }
-    
     .shooting-star::before {
       content: ''; position: absolute; top: 50%; transform: translateY(-50%); right: 0; width: 200px; height: 1px;
       background: linear-gradient(to right, transparent, rgba(255,255,255,0.8));
@@ -81,15 +51,10 @@ const GlobalStyles = () => (
 
 // --- 核心工具：智能 URL 处理 ---
 const getApiEndpoint = (path, forceDirect = false) => {
-  // 1. 本地调试 (localhost): 直连 IP
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
      return SERVER_IP ? `${SERVER_IP}${path}` : path;
   }
-  // 2. 强制直连模式 (仅用于诊断)
-  if (forceDirect) {
-     return `${SERVER_IP}${path}`;
-  }
-  // 3. 线上生产 (Vercel): 强制使用相对路径，依赖 vercel.json 转发
+  if (forceDirect) return `${SERVER_IP}${path}`;
   return path;
 };
 
@@ -135,7 +100,7 @@ class ErrorBoundary extends React.Component {
 // ==========================================
 // --- 2. 数据引擎 ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_data_v17_robust'; 
+const STORAGE_KEY = 'go_domi_data_v18_fixed'; 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
 const DEFAULT_USER_DATA = {
@@ -181,6 +146,12 @@ const LocalDB = {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     window.dispatchEvent(new Event('local-db-change'));
   },
+  restore: (fullData) => {
+    if (!fullData || !fullData.user) { alert("无效的存档文件"); return; }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(fullData));
+    window.dispatchEvent(new Event('local-db-change'));
+    window.location.reload(); 
+  },
   export: () => {
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) return alert("没有本地数据");
@@ -225,7 +196,7 @@ const CloudAPI = {
       let warning = `连接失败 (${e.message})。已切换至离线模式。`;
       
       if (e.message.includes('Failed to fetch') && window.location.protocol === 'https:' && forceDirect) {
-          warning = '安全拦截: HTTPS 无法直连 HTTP IP。请关闭“强制直连”并确保 vercel.json 配置正确。';
+          warning = '安全拦截: HTTPS 无法直连 HTTP IP。请关闭“强制直连”并检查 vercel.json。';
       }
       
       return { uid: username, token: 'offline', initialData: LocalDB.get(), mode: 'offline', warning, debugInfo: endpoint }; 
@@ -248,15 +219,17 @@ const CloudAPI = {
   },
   sync: async (username, data, mode) => {
     LocalDB.save(data);
+    const endpoint = getApiEndpoint('/api/sync');
     if (mode === 'cloud' || mode === 'force') {
-      try { await fetch(getApiEndpoint('/api/sync'), { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username, data }) }); } catch (e) { console.error("Sync failed", e); }
+      try { await fetch(endpoint, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username, data }) }); } catch (e) { console.error("Sync failed", e); }
     }
   },
   upload: async (file) => {
+    const endpoint = getApiEndpoint('/api/upload');
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch(getApiEndpoint('/api/upload'), { method: 'POST', body: formData });
+      const res = await fetch(endpoint, { method: 'POST', body: formData });
       if (res.ok) {
         const result = await res.json();
         return result.url; 
@@ -312,7 +285,6 @@ const MAX_DAILY_TASKS = 10;
 // --- Utilities ---
 const getBeijingTime = () => { const now = new Date(); return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + 8 * 3600000); };
 const isBeijingActiveWindow = (start, end) => { const h = getBeijingTime().getHours(); return h >= start && h < end; };
-// 计算预计推送时间 (用于显示)
 const getScheduledTimeDisplay = (pushStart, itemNextReview) => {
    const now = Date.now();
    const todayPushStart = new Date();
@@ -404,7 +376,7 @@ const LoginScreen = ({ onLogin }) => {
       <div className="relative z-10 w-full max-w-sm bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V18.1 (Full)</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V18.2</p>
         
         {SERVER_IP && (
             <div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between">
@@ -481,9 +453,10 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
 
 const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, toggleParentMode, processingTasks, hiddenTaskIds, onStartPatrol, isPatrolling, isPlaying, onOpenCollection, connectionMode, onForceSync, onLogout }) => {
   const currentTheme = THEMES.cosmic;
+  const displayTasks = tasks.filter(t => t.status === 'pending');
+  const progressPercent = Math.min((userProfile.xp / (userProfile.level*100)) * 100, 100);
   const mascotImg = proxifyUrl(userProfile.themeConfig?.mascot || currentTheme.mascot);
   const bgImg = proxifyUrl(userProfile.themeConfig?.background || currentTheme.backgroundImage);
-  const progressPercent = Math.min((userProfile.xp / (userProfile.level*100)) * 100, 100);
 
   return (
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} flex flex-col relative`}>
@@ -505,6 +478,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
     const [pushEnd, setPushEnd] = useState(userProfile.pushEndHour || 21);
     const [dailyLimit, setDailyLimit] = useState(userProfile.dailyLimit || 10);
+    // 🛡️ 核心修复：taskProbabilities 如果为空，提供默认对象，防止 map 崩溃
     const [taskProbabilities, setTaskProbabilities] = useState(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
     
     // Theme States
@@ -525,6 +499,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
 
     const mascotInputRef = useRef(null);
     const bgInputRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     const safeTasks = Array.isArray(tasks) ? tasks : [];
     const safeLibrary = Array.isArray(libraryItems) ? libraryItems : [];
@@ -547,12 +522,21 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     };
 
     const handleSaveTheme = () => {
-      onUpdateProfile({ 
-        themeConfig: { mascot: themeMascot, background: themeBg, assistantName: assistantName }
-      });
-      setSaveStatus('theme');
-      setTimeout(() => setSaveStatus(''), 2000);
-      alert("✅ 主题已更新！");
+      try {
+        onUpdateProfile({ 
+          themeConfig: {
+            mascot: themeMascot,
+            background: themeBg,
+            assistantName: assistantName
+          }
+        });
+        setSaveStatus('theme');
+        setTimeout(() => setSaveStatus(''), 2000);
+        alert("✅ 主题已更新！请关闭控制台查看效果");
+      } catch (e) {
+        console.error(e);
+        alert("保存失败，请重试");
+      }
     };
 
     const handlePush = (e) => { e.preventDefault(); onAddTask({ title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), image: newTaskType==='generic'?flashcardImg:undefined, flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已推送'); refresh(); };
@@ -566,6 +550,12 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
         alert("已插队推送！手机端即刻可见。");
         refresh();
     };
+
+    const handleExport = () => { const BOM = "\uFEFF"; const rows = safeLibrary.map(item => `${(item.title||"").replace(/,/g,"，")},${item.type||"generic"},${item.reward||10},${item.flashcardData?.word||""}`); const blob = new Blob([BOM + "标题,类型,奖励,单词\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = "tasks.csv"; document.body.appendChild(link); link.click(); link.remove(); };
+    const handleBackup = () => { const data = LocalDB.get(); const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_${Date.now()}.json`; document.body.appendChild(link); link.click(); link.remove(); };
+    const handleRestore = (e) => { const file = e.target.files[0]; if(!file)return; const reader = new FileReader(); reader.onload = (ev) => { try { LocalDB.restore(JSON.parse(ev.target.result)); } catch { alert("文件错误"); } }; reader.readAsText(file); };
+    
+    const handleLogout = () => { if(confirm("确定要退出登录吗？")) window.location.reload(); };
 
     return (<div className="fixed inset-0 bg-slate-100 z-50 p-4 overflow-y-auto">
       <div className="flex justify-between mb-4"><h2 className="font-bold text-slate-800">家长后台</h2><button onClick={onClose}><XCircle/></button></div>
@@ -620,7 +610,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
         </div>
         <div className="border-t pt-4"><label className="text-xs text-slate-500 block mb-2">随机任务概率</label>{['english','sport','life'].map(type=>(<div key={type} className="flex items-center gap-2 mb-2"><span className="text-xs w-12 capitalize">{type}</span><input type="range" className="flex-1" min="0" max="100" value={taskProbabilities?.[type]||30} onChange={e=>setTaskProbabilities(p=>({...p,[type]:parseInt(e.target.value)}))}/><span className="text-xs w-8">{taskProbabilities?.[type]}%</span></div>))}</div>
         <button onClick={handleSaveConfig} className="bg-slate-800 text-white w-full py-3 rounded font-bold">保存配置</button>
-        <div className="border-t pt-4 grid grid-cols-2 gap-3"><button onClick={handleBackup} className="p-3 bg-slate-100 rounded text-xs font-bold">备份数据</button><button onClick={handleRestore} className="p-3 bg-slate-100 rounded text-xs font-bold">恢复数据</button></div>
+        <div className="border-t pt-4 grid grid-cols-2 gap-3"><button onClick={handleBackup} className="p-3 bg-slate-100 rounded text-xs font-bold">备份数据</button><button onClick={()=>fileInputRef.current.click()} className="p-3 bg-slate-100 rounded text-xs font-bold">恢复数据</button><input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div>
         <div className="pt-4 border-t flex justify-between"><button onClick={onForceSync} className="text-blue-600 text-xs flex gap-1"><Cloud size={14}/> 强制覆盖云端数据</button><button onClick={handleLogout} className="text-red-500 text-xs">退出</button></div></div>}
       
       {activeTab==='monitor' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">实时待办</h3>{pendingTasks.map(t=><div key={t.id} className="p-2 border-b flex justify-between items-center"><span className="text-sm">{t.title}</span><button onClick={()=>onDeleteTask(t.id)} className="text-red-500 text-xs border px-2 py-1 rounded">撤回</button></div>)}</div>}
@@ -683,30 +673,14 @@ export default function App() {
   const [showCollection, setShowCollection] = useState(false);
   const [rewardData, setRewardData] = useState(null);
 
-  // --- 1. 初始化加载 ---
   useEffect(() => {
     const saved = localStorage.getItem('go_domi_session');
     if (saved) {
        const s = JSON.parse(saved);
        setSession(s);
-       // 立即拉取一次
        CloudAPI.fetchData(s.uid).then(d => { setData(d); setLoading(false); });
     } else { setLoading(false); }
   }, []);
-
-  // --- 2. 自动心跳同步 (Auto Pull) ---
-  // 解决问题1：手机端每 10 秒自动拉取一次最新数据，确保家长推送的任务能及时显示
-  useEffect(() => {
-    if (!session || !SERVER_IP) return;
-    const interval = setInterval(async () => {
-       const newData = await CloudAPI.fetchData(session.uid);
-       if (newData && JSON.stringify(newData) !== JSON.stringify(data)) {
-          // 仅当数据有变化时才更新，避免无效渲染
-          setData(newData);
-       }
-    }, 10000); // 10秒一次
-    return () => clearInterval(interval);
-  }, [session, data]); // 依赖 data 用于对比
 
   const handleLogin = async (s) => {
     localStorage.setItem('go_domi_session', JSON.stringify(s));
@@ -728,34 +702,6 @@ export default function App() {
     if(confirm("确定要将当前设备的本地数据覆盖到云端吗？")) {
        await CloudAPI.sync(session.uid, data, 'force');
        alert("已强制同步到云端！");
-    }
-  };
-  
-  // 解决问题3：插队推送
-  const handlePromoteTask = (libraryItem) => {
-    const newData = { ...data };
-    // 检查是否已经在 pending 列表中
-    const existing = newData.tasks.find(t => t.libraryId === libraryItem.id && t.status === 'pending');
-    if (!existing) {
-       // 如果不在，插入队首
-       const newTask = {
-          ...libraryItem,
-          id: generateId(),
-          status: 'pending',
-          createdAt: Date.now(),
-          libraryId: libraryItem.id,
-          source: 'manual_promote'
-       };
-       // 使用 unshift 插入到数组最前面，优先显示
-       newData.tasks.unshift(newTask);
-       
-       // 更新 library item 的下次复习时间（可选，这里设为推迟一天）
-       const libIdx = newData.library.findIndex(i => i.id === libraryItem.id);
-       if(libIdx >= 0) {
-           newData.library[libIdx].nextReview = Date.now() + 24 * 60 * 60 * 1000;
-       }
-       
-       persist(newData);
     }
   };
 
