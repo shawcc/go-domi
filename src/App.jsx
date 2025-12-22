@@ -5,31 +5,110 @@ import {
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
   Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
-  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe, Info, Play, RotateCw
+  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe, Info, Play, RotateCw, Bell
 } from 'lucide-react';
 
 // ==========================================
-// --- 0. 基础配置 ---
+// --- 0. 基础配置与常量 ---
 // ==========================================
 
 // ⚠️ 生产环境配置: 
+// 填写您的腾讯云服务器地址 (例如 http://43.143.74.76:3000)
 const SERVER_IP = 'http://43.143.74.76:3000'; 
 const BACKEND_HOST = '43.143.74.76:3000';
 
+const STORAGE_KEY = 'go_domi_data_v19_cycle'; 
+
+// 预置主题配置
+const THEMES = {
+  cosmic: {
+    id: 'cosmic', 
+    name: '宇宙护卫队', 
+    bg: 'bg-slate-900', 
+    text: 'text-slate-100', 
+    card: 'bg-slate-800',
+    primary: 'bg-blue-600 hover:bg-blue-500', 
+    accent: 'text-yellow-400',
+    mascot: '/assets/images/mascot.png', 
+    backgroundImage: '/assets/images/bg_cosmic.jpg', 
+    assistant: '小雨点', 
+    currency: '能量石'
+  }
+};
+
+// 水晶进化阶段
+const CRYSTAL_STAGES = [
+  { minLevel: 1, name: '原初晶核', icon: Hexagon, color: 'text-blue-300', scale: 1, message: "能量..." },
+  { minLevel: 3, name: '觉醒晶簇', icon: Triangle, color: 'text-purple-400', scale: 1.2, message: "苏醒..." },
+  { minLevel: 6, name: '辉光棱镜', icon: Octagon, color: 'text-pink-400', scale: 1.4, message: "充能！" },
+  { minLevel: 9, name: '永恒之心', icon: Gem, color: 'text-yellow-300', scale: 1.6, message: "无敌！" },
+];
+
+// 拼图配置
+const PUZZLE_CONFIG = { 
+  totalPieces: 9, 
+  image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80" 
+};
+
+// 预置词库 (Demo)
+const SYSTEM_DICTIONARY = {
+  'cat': { cn: '猫', img: '/assets/images/cat.jpg' }, 
+  'dog': { cn: '狗', img: '/assets/images/dog.jpg' }, 
+  'apple': { cn: '苹果', img: '/assets/images/apple.jpg' }, 
+  'banana': { cn: '香蕉', img: '/assets/images/banana.jpg' }, 
+  'head': { cn: '头', img: '/assets/images/head.jpg' }, 
+};
+
+// 艾宾浩斯复习间隔 (天)
+const REVIEW_INTERVALS = [0, 1, 2, 4, 7, 15, 30]; 
+
+// ==========================================
+// --- 1. 全局样式 (CSS-in-JS) ---
+// ==========================================
 const GlobalStyles = () => (
   <style>{`
-    html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; max-width: none !important; overflow-x: hidden; font-family: system-ui, -apple-system, sans-serif; background-color: #0f172a; }
+    html, body, #root { 
+      margin: 0; 
+      padding: 0; 
+      width: 100%; 
+      height: 100%; 
+      max-width: none !important; 
+      overflow-x: hidden; 
+      font-family: system-ui, -apple-system, sans-serif; 
+      background-color: #0f172a; 
+    }
     ::-webkit-scrollbar { width: 0px; background: transparent; }
     
-    @keyframes shine { 0% { transform: translateX(-100%) rotate(45deg); } 100% { transform: translateX(200%) rotate(45deg); } }
+    @keyframes shine { 
+      0% { transform: translateX(-100%) rotate(45deg); } 
+      100% { transform: translateX(200%) rotate(45deg); } 
+    }
     .shiny-card { position: relative; overflow: hidden; }
-    .shiny-card::after { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%); transform: translateX(-100%) rotate(45deg); animation: shine 3s infinite; }
+    .shiny-card::after { 
+      content: ""; 
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+      background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%); 
+      transform: translateX(-100%) rotate(45deg); 
+      animation: shine 3s infinite; 
+    }
     
-    @keyframes scan { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
-    .scan-line { background: linear-gradient(to bottom, transparent, rgba(239, 68, 68, 0.5), transparent); animation: scan 3s linear infinite; }
-    .hazard-stripes { background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px); background-size: 50px 50px; }
+    @keyframes scan { 
+      0% { transform: translateY(-100%); } 
+      100% { transform: translateY(100%); } 
+    }
+    .scan-line { 
+      background: linear-gradient(to bottom, transparent, rgba(239, 68, 68, 0.5), transparent); 
+      animation: scan 3s linear infinite; 
+    }
+    .hazard-stripes { 
+      background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px); 
+      background-size: 50px 50px; 
+    }
     
-    @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes spin-slow { 
+      from { transform: rotate(0deg); } 
+      to { transform: rotate(360deg); } 
+    }
     
     @keyframes shooting-star {
       0% { transform: translateX(0) translateY(0) rotate(45deg); opacity: 1; }
@@ -49,7 +128,13 @@ const GlobalStyles = () => (
   `}</style>
 );
 
-// --- 核心工具：智能 URL 处理 ---
+// ==========================================
+// --- 2. 工具函数库 (Utils) ---
+// ==========================================
+
+const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+
+// 智能 URL 处理：解决开发/生产环境差异
 const getApiEndpoint = (path, forceDirect = false) => {
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
      return SERVER_IP ? `${SERVER_IP}${path}` : path;
@@ -58,6 +143,7 @@ const getApiEndpoint = (path, forceDirect = false) => {
   return path;
 };
 
+// 图片代理处理：解决 Mixed Content
 const proxifyUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('data:')) return url; 
@@ -68,40 +154,96 @@ const proxifyUrl = (url) => {
   return url;
 };
 
-// ==========================================
-// --- 1. 基础组件 ---
-// ==========================================
-const LoadingScreen = () => (
-  <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center text-white p-4 z-[100]">
-    <div className="animate-bounce text-6xl mb-4">🚀</div>
-    <h1 className="text-2xl font-bold animate-pulse">正在连接宇宙基地...</h1>
-    <p className="text-slate-400 mt-2">系统初始化中</p>
-  </div>
-);
+// 智能生成任务资源
+const enrichWordTask = (wordInput) => {
+  const word = wordInput.trim();
+  const lowerWord = word.toLowerCase();
+  const preset = SYSTEM_DICTIONARY[lowerWord];
+  const translation = preset ? preset.cn : ''; 
+  const imageUrl = (preset && preset.img) ? preset.img : `https://image.pollinations.ai/prompt/cute cartoon ${word} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${Math.random()}`;
+  const audioUrl = `/assets/audio/${lowerWord}.mp3`;
+  return { word, translation, image: imageUrl, audio: audioUrl };
+};
 
-class ErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
-  static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, errorInfo) { console.error("Crash:", error, errorInfo); }
-  render() {
-    if (this.state.hasError) return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-6 text-center">
-        <h2 className="text-xl font-bold mb-2 text-red-400">基地系统遭遇干扰</h2>
-        <p className="text-xs text-slate-500 mb-6 max-w-xs break-all bg-slate-800 p-2 rounded">{this.state.error?.toString()}</p>
-        <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-red-600 px-6 py-3 rounded-full font-bold shadow-lg flex items-center gap-2 mx-auto">
-           <RefreshCw size={18}/> 重置系统 (清除缓存)
-        </button>
-      </div>
-    );
-    return this.props.children; 
-  }
-}
+// 时间处理
+const getBeijingTime = () => { 
+  const now = new Date(); 
+  return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + 8 * 3600000); 
+};
+
+const isBeijingActiveWindow = (start, end) => { 
+  const h = getBeijingTime().getHours(); 
+  return h >= start && h < end; 
+};
+
+const getScheduledTimeDisplay = (pushStart, itemNextReview) => {
+   const now = Date.now();
+   const todayPushStart = new Date();
+   todayPushStart.setHours(pushStart, 0, 0, 0);
+   
+   if (!itemNextReview) return "未计划";
+   
+   if (itemNextReview > now) {
+      return new Date(itemNextReview).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+   }
+   
+   // 任务已到期
+   return "✅ 队列中 (随时可发)";
+};
+
+const getNextBeijingScheduleTime = (startHour = 19) => { 
+  const t = getBeijingTime(); 
+  t.setHours(startHour - 8,0,0,0); 
+  if(Date.now() >= t.getTime()) t.setDate(t.getDate()+1); 
+  return t.getTime(); 
+};
+
+const formatTime = (ts) => new Date(ts).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+
+// 语音合成
+const speak = (text) => {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'zh-CN'; 
+  const zh = window.speechSynthesis.getVoices().find(v => v.lang.includes('zh'));
+  if (zh) u.voice = zh;
+  window.speechSynthesis.speak(u);
+};
+
+const speakEnglish = (text) => {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US'; 
+  u.rate = 0.9;
+  window.speechSynthesis.speak(u);
+};
+
+const playTaskAudio = (text, audioUrl) => {
+  if (audioUrl) {
+    const safeUrl = proxifyUrl(audioUrl);
+    const audio = new Audio(safeUrl);
+    audio.play().catch(() => speakEnglish(text));
+  } else speakEnglish(text);
+};
+
+const playSystemSound = (type) => {
+   const sounds = {
+     alert: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
+     success: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
+     patrol: 'https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3',
+     levelup: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
+     nudge: 'https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3'
+   };
+   const a = new Audio(sounds[type]); 
+   a.volume = 0.5; 
+   a.play().catch(()=>{});
+};
 
 // ==========================================
-// --- 2. 数据引擎 ---
+// --- 3. 数据层 (Data Layer) ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_data_v18_fixed'; 
-const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
 const DEFAULT_USER_DATA = {
   user: { 
@@ -112,7 +254,8 @@ const DEFAULT_USER_DATA = {
       background: '/assets/images/bg_cosmic.jpg',
       assistantName: '小雨点'
     },
-    taskProbabilities: { english: 50, sport: 30, life: 20 }
+    taskProbabilities: { english: 50, sport: 30, life: 20 },
+    nudge: 0
   },
   tasks: [],
   library: [],
@@ -173,7 +316,6 @@ const CloudAPI = {
       const controller = new AbortController();
       setTimeout(() => controller.abort(), 8000); 
       
-      console.log(`[CloudAPI] Connecting to: ${endpoint}`);
       const res = await fetch(endpoint, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' },
@@ -192,7 +334,6 @@ const CloudAPI = {
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
     } catch (e) { 
-      console.warn("Cloud login failed:", e);
       let warning = `连接失败 (${e.message})。已切换至离线模式。`;
       if (e.message.includes('Failed to fetch') && window.location.protocol === 'https:' && forceDirect) {
           warning = '安全拦截: HTTPS 无法直连 HTTP IP。请关闭“强制直连”。';
@@ -213,7 +354,6 @@ const CloudAPI = {
           return safeData;
        }
      } catch (e) {}
-     // ⚠️ 关键修改：如果 fetch 失败，不要轻易覆盖，但如果是为了更新 state，返回 null
      return null;
   },
   sync: async (username, data, mode) => {
@@ -241,101 +381,34 @@ const CloudAPI = {
 };
 
 // ==========================================
-// --- 3. 资源配置 ---
+// --- 4. 界面组件 (Components) ---
 // ==========================================
-const PUZZLE_CONFIG = { totalPieces: 9, image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80" };
-const SYSTEM_DICTIONARY = {
-  'cat': { cn: '猫', img: '/assets/images/cat.jpg' }, 'dog': { cn: '狗', img: '/assets/images/dog.jpg' }, 
-  'apple': { cn: '苹果', img: '/assets/images/apple.jpg' }, 'banana': { cn: '香蕉', img: '/assets/images/banana.jpg' }, 
-  'head': { cn: '头', img: '/assets/images/head.jpg' }, 
-};
 
-const enrichWordTask = (wordInput) => {
-  const word = wordInput.trim();
-  const lowerWord = word.toLowerCase();
-  const preset = SYSTEM_DICTIONARY[lowerWord];
-  const translation = preset ? preset.cn : ''; 
-  const imageUrl = (preset && preset.img) ? preset.img : `https://image.pollinations.ai/prompt/cute cartoon ${word} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${Math.random()}`;
-  const audioUrl = `/assets/audio/${lowerWord}.mp3`;
-  return { word, translation, image: imageUrl, audio: audioUrl };
-};
+const LoadingScreen = () => (
+  <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center text-white p-4 z-[100]">
+    <div className="animate-bounce text-6xl mb-4">🚀</div>
+    <h1 className="text-2xl font-bold animate-pulse">正在连接宇宙基地...</h1>
+    <p className="text-slate-400 mt-2">系统初始化中</p>
+  </div>
+);
 
-const THEMES = {
-  cosmic: {
-    id: 'cosmic', name: '宇宙护卫队', bg: 'bg-slate-900', text: 'text-slate-100', card: 'bg-slate-800',
-    primary: 'bg-blue-600 hover:bg-blue-500', accent: 'text-yellow-400',
-    mascot: '/assets/images/mascot.png', backgroundImage: '/assets/images/bg_cosmic.jpg', 
-    assistant: '小雨点', currency: '能量石'
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, errorInfo) { console.error("Crash:", error, errorInfo); }
+  render() {
+    if (this.state.hasError) return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-6 text-center">
+        <h2 className="text-xl font-bold mb-2 text-red-400">基地系统遭遇干扰</h2>
+        <p className="text-xs text-slate-500 mb-6 max-w-xs break-all bg-slate-800 p-2 rounded">{this.state.error?.toString()}</p>
+        <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-red-600 px-6 py-3 rounded-full font-bold shadow-lg flex items-center gap-2 mx-auto">
+           <RefreshCw size={18}/> 重置系统 (清除缓存)
+        </button>
+      </div>
+    );
+    return this.props.children; 
   }
-};
-
-const CRYSTAL_STAGES = [
-  { minLevel: 1, name: '原初晶核', icon: Hexagon, color: 'text-blue-300', scale: 1, message: "能量..." },
-  { minLevel: 3, name: '觉醒晶簇', icon: Triangle, color: 'text-purple-400', scale: 1.2, message: "苏醒..." },
-  { minLevel: 6, name: '辉光棱镜', icon: Octagon, color: 'text-pink-400', scale: 1.4, message: "充能！" },
-  { minLevel: 9, name: '永恒之心', icon: Gem, color: 'text-yellow-300', scale: 1.6, message: "无敌！" },
-];
-
-const REVIEW_INTERVALS = [0, 1, 2, 4, 7, 15, 30]; 
-const MAX_DAILY_TASKS = 10; 
-
-// --- Utilities ---
-const getBeijingTime = () => { const now = new Date(); return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + 8 * 3600000); };
-const isBeijingActiveWindow = (start, end) => { const h = getBeijingTime().getHours(); return h >= start && h < end; };
-const getScheduledTimeDisplay = (pushStart, itemNextReview) => {
-   const now = Date.now();
-   const todayPushStart = new Date();
-   todayPushStart.setHours(pushStart, 0, 0, 0);
-   
-   if (itemNextReview > now) {
-      return new Date(itemNextReview).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
-   }
-   if (now < todayPushStart.getTime()) {
-      return "今天 " + pushStart + ":00 (待调度)"; 
-   } else {
-      return "队列中 (等待下一波)";
-   }
-};
-
-const getNextBeijingScheduleTime = (startHour = 19) => { const t = getBeijingTime(); t.setHours(startHour - 8,0,0,0); if(Date.now() >= t.getTime()) t.setDate(t.getDate()+1); return t.getTime(); };
-const formatTime = (ts) => new Date(ts).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
-
-const speak = (text) => {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'zh-CN'; u.rate = 1.0; 
-  const zh = window.speechSynthesis.getVoices().find(v => v.lang.includes('zh'));
-  if (zh) u.voice = zh;
-  window.speechSynthesis.speak(u);
-};
-const speakEnglish = (text) => {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'en-US'; u.rate = 0.9;
-  window.speechSynthesis.speak(u);
-};
-const playTaskAudio = (text, audioUrl) => {
-  if (audioUrl) {
-    const safeUrl = proxifyUrl(audioUrl);
-    const audio = new Audio(safeUrl);
-    audio.play().catch(() => speakEnglish(text));
-  } else speakEnglish(text);
-};
-const playSystemSound = (type) => {
-   const sounds = {
-     alert: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
-     success: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
-     patrol: 'https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3',
-     levelup: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3'
-   };
-   const a = new Audio(sounds[type]); a.volume = 0.4; a.play().catch(()=>{});
-};
-
-// ==========================================
-// --- 4. 界面组件 ---
-// ==========================================
+}
 
 const LoginScreen = ({ onLogin }) => {
   const [username, setUsername] = useState('');
@@ -373,7 +446,7 @@ const LoginScreen = ({ onLogin }) => {
       <div className="relative z-10 w-full max-w-sm bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V18.6 (增强同步)</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V19.0 (Full)</p>
         
         {SERVER_IP && (
             <div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between">
@@ -459,7 +532,15 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} flex flex-col relative`}>
       <DynamicBackground themeId="cosmic" customBg={bgImg} />
       {isPatrolling && <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60"><div className="w-[300px] h-[300px] border-4 border-green-500 rounded-full animate-ping"></div><div className="mt-8 text-green-400 font-mono text-2xl font-black animate-pulse">SCANNING...</div></div>}
-      <div onClick={onForceSync} className={`w-full py-1 text-center text-[10px] font-bold cursor-pointer transition-colors ${connectionMode === 'cloud' ? 'bg-green-600 text-white' : 'bg-red-600 text-white animate-pulse'}`}>{connectionMode === 'cloud' ? '🟢 基地在线 (点击强制同步)' : `🔴 ${connectionMode === 'offline' ? '离线模式' : '连接异常'} (点击重试)`}</div>
+      
+      {/* 顶部状态栏 */}
+      <div 
+        onClick={onForceSync}
+        className={`w-full py-1 text-center text-[10px] font-bold cursor-pointer transition-colors ${connectionMode === 'cloud' ? 'bg-green-600 text-white' : 'bg-red-600 text-white animate-pulse'}`}
+      >
+         {connectionMode === 'cloud' ? '🟢 基地在线 (点击强制同步)' : `🔴 ${connectionMode === 'offline' ? '离线模式' : '连接异常'} (点击重试)`}
+      </div>
+
       <div className="w-full p-4 flex justify-between items-center bg-black/20 backdrop-blur-md z-10"><div className="flex items-center gap-3"><button onClick={onLogout} className="w-8 h-8 rounded-full bg-slate-800/80 flex items-center justify-center border border-white/20 text-red-400 mr-2 hover:bg-slate-700 transition-colors"><LogOut size={14}/></button><div className="w-14 h-14 bg-white/10 rounded-full overflow-hidden"><img src={mascotImg} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none';e.target.nextSibling.style.display='block'}}/><Rocket className="text-yellow-400 hidden" size={32}/></div><div><div className="font-bold">多米队长</div><div className="text-xs opacity-70">Lv.{userProfile.level}</div></div></div><div className="flex gap-3"><div className="flex items-center gap-1 bg-black/40 px-3 py-1 rounded-full"><Zap size={14} className="text-yellow-400"/><span className="font-bold text-yellow-400">{userProfile.coins}</span></div><button onClick={toggleParentMode}><Settings size={20}/></button></div></div>
       <div className="flex-1 relative z-10 flex flex-col"><div className="px-6 mt-4"><div className="w-full bg-black/40 h-3 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{width: `${progressPercent}%`}}></div></div></div><GrowingCrystal level={userProfile.level} xp={userProfile.xp} onClick={() => speak(currentTheme.currency)} /><div className="fixed bottom-6 w-full flex justify-center gap-6 items-end pb-4 pointer-events-none"><button onClick={()=>onOpenCollection('puzzle')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><Puzzle className="text-yellow-400"/></button><button onClick={onStartPatrol} disabled={isPatrolling} className="pointer-events-auto w-24 h-24 bg-blue-600 rounded-full flex flex-col items-center justify-center border-4 border-blue-400 shadow-xl mb-2"><Radar className="text-white w-10 h-10"/><span className="text-[10px] font-black uppercase mt-1">巡逻</span></button><button onClick={()=>onOpenCollection('cards')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><BookOpen className="text-blue-400"/></button></div></div>
       {displayTasks.length > 0 && !isPlaying && <TaskPopup userProfile={userProfile} tasks={displayTasks} currentTheme={currentTheme} onCompleteTask={onCompleteTask} onPlayFlashcard={onPlayFlashcard} processingTasks={processingTasks} />}
@@ -467,44 +548,41 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
   );
 };
 
-const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose, onDeleteTask, onUpdateProfile, onManageLibrary, onDataChange, sessionUid, onForceSync, onPromoteTask }) => {
+const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose, onDeleteTask, onUpdateProfile, onManageLibrary, onDataChange, sessionUid, onForceSync, onPromoteTask, onNudgeKid }) => {
     const [activeTab, setActiveTab] = useState('plan'); 
     const [saveStatus, setSaveStatus] = useState(''); 
     
-    // Config states
-    const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
-    const [pushEnd, setPushEnd] = useState(userProfile.pushEndHour || 21);
-    const [dailyLimit, setDailyLimit] = useState(userProfile.dailyLimit || 10);
-    // 🛡️ 核心修复：taskProbabilities 如果为空，提供默认对象，防止 map 崩溃
-    const [taskProbabilities, setTaskProbabilities] = useState(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
-    
-    // Theme States
-    const [themeMascot, setThemeMascot] = useState(userProfile.themeConfig?.mascot || '');
-    const [themeBg, setThemeBg] = useState(userProfile.themeConfig?.background || '');
-    const [assistantName, setAssistantName] = useState(userProfile.themeConfig?.assistantName || '');
-    
-    // Add Task States
+    // Form & Config States
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [newTaskType, setNewTaskType] = useState('generic');
     const [newTaskReward, setNewTaskReward] = useState(20);
+    const [newTaskCycle, setNewTaskCycle] = useState('ebbinghaus'); 
     const [flashcardWord, setFlashcardWord] = useState('');
     const [flashcardTrans, setFlashcardTrans] = useState('');
     const [flashcardImg, setFlashcardImg] = useState('');
     const [flashcardAudio, setFlashcardAudio] = useState('');
     const [batchWords, setBatchWords] = useState('');
     const [uploading, setUploading] = useState(false);
-
+    
+    const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
+    const [pushEnd, setPushEnd] = useState(userProfile.pushEndHour || 21);
+    const [dailyLimit, setDailyLimit] = useState(userProfile.dailyLimit || 10);
+    const [taskProbabilities, setTaskProbabilities] = useState(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
+    const [themeMascot, setThemeMascot] = useState(userProfile.themeConfig?.mascot || '');
+    const [themeBg, setThemeBg] = useState(userProfile.themeConfig?.background || '');
+    const [assistantName, setAssistantName] = useState(userProfile.themeConfig?.assistantName || '');
+    
     const mascotInputRef = useRef(null);
     const bgInputRef = useRef(null);
     const fileInputRef = useRef(null);
 
-    // 修复：Plan 列表应显示所有 library，并标记 pending 状态
-    // 同时排序：过期/待调度的在前，未来的在后
-    const sortedLibrary = [...libraryItems].sort((a,b) => a.nextReview - b.nextReview);
-    const isPending = (libId) => tasks.some(t => t.libraryId === libId && t.status === 'pending');
-
-    const pendingTasks = tasks.filter(t => t.status === 'pending');
-    const completedTasks = tasks.filter(t => t.status === 'completed');
+    // 🛡️ Safe Lists
+    const safeTasks = Array.isArray(tasks) ? tasks : [];
+    const safeLibrary = Array.isArray(libraryItems) ? libraryItems : [];
+    const pendingTasks = safeTasks.filter(t => t.status === 'pending');
+    const completedTasks = safeTasks.filter(t => t.status === 'completed');
+    const sortedLibrary = [...safeLibrary].sort((a,b) => a.nextReview - b.nextReview);
+    const isPending = (libId) => pendingTasks.some(t => t.libraryId === libId);
 
     const refresh = () => { if(onDataChange) onDataChange(); };
 
@@ -548,10 +626,19 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
         alert("保存失败，请重试");
       }
     };
+    
+    const constructTaskData = () => ({
+        title: newTaskType === 'english' ? `练习单词: ${flashcardWord}` : newTaskTitle,
+        type: newTaskType,
+        reward: parseInt(newTaskReward),
+        image: newTaskType==='generic'?flashcardImg:undefined,
+        flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null,
+        cycleMode: newTaskCycle
+    });
 
-    const handlePush = (e) => { e.preventDefault(); onAddTask({ title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), image: newTaskType==='generic'?flashcardImg:undefined, flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已推送'); refresh(); };
-    const handleAddToLibrary = (e) => { e.preventDefault(); onManageLibrary('add', { title: newTaskTitle, type: newTaskType, reward: parseInt(newTaskReward), image: newTaskType==='generic'?flashcardImg:undefined, flashcardData: newTaskType === 'english' ? { word: flashcardWord, translation: flashcardTrans, image: flashcardImg, audio: flashcardAudio } : null, memoryLevel: 0, nextReview: getNextBeijingScheduleTime(parseInt(pushStart)) }); setNewTaskTitle(''); setFlashcardWord(''); setFlashcardTrans(''); setFlashcardImg(''); setFlashcardAudio(''); alert('已添加到库'); refresh(); };
-    const handleBatchAddWords = () => { if (!batchWords.trim()) return; const words = batchWords.split(/[,，\n]/).map(w => w.trim()).filter(w => w); const batchTime = getNextBeijingScheduleTime(parseInt(pushStart)); let count = 0; words.forEach(word => { const enrichedData = enrichWordTask(word); onManageLibrary('add', { title: `练习单词: ${enrichedData.word}`, type: 'english', reward: 20, flashcardData: enrichedData, memoryLevel: 0, nextReview: batchTime }); count++; }); alert(`成功生成 ${count} 个任务！`); setBatchWords(''); refresh(); };
+    const handlePush = (e) => { e.preventDefault(); onAddTask(constructTaskData()); alert('已推送'); refresh(); };
+    const handleAddToLibrary = (e) => { e.preventDefault(); onManageLibrary('add', { ...constructTaskData(), memoryLevel: 0, nextReview: Date.now() }); alert('已添加到库 (立即生效)'); refresh(); };
+    const handleBatchAddWords = () => { if (!batchWords.trim()) return; const words = batchWords.split(/[,，\n]/).map(w => w.trim()).filter(w => w); let count = 0; words.forEach(word => { const enrichedData = enrichWordTask(word); onManageLibrary('add', { title: `练习单词: ${enrichedData.word}`, type: 'english', reward: 20, flashcardData: enrichedData, memoryLevel: 0, nextReview: Date.now(), cycleMode: 'ebbinghaus' }); count++; }); alert(`成功生成 ${count} 个任务！`); setBatchWords(''); refresh(); };
     const handleSaveConfig = () => { onUpdateProfile({ taskProbabilities, pushStartHour: parseInt(pushStart), pushEndHour: parseInt(pushEnd), dailyLimit: parseInt(dailyLimit) }); alert("保存成功"); };
     
     // “立即推送”功能
@@ -561,13 +648,12 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
         refresh();
     };
 
-    const handleExport = () => { const BOM = "\uFEFF"; const rows = sortedLibrary.map(item => `${(item.title||"").replace(/,/g,"，")},${item.type||"generic"},${item.reward||10},${item.flashcardData?.word||""}`); const blob = new Blob([BOM + "标题,类型,奖励,单词\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = "tasks.csv"; document.body.appendChild(link); link.click(); link.remove(); };
+    const handleExport = () => { const BOM = "\uFEFF"; const rows = sortedLibrary.map(item => `${(item.title||"").replace(/,/g,"，")},${item.type},${item.cycleMode||'ebbinghaus'}`); const blob = new Blob([BOM + "标题,类型,循环模式\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = "tasks.csv"; document.body.appendChild(link); link.click(); link.remove(); };
     const handleBackup = () => { const data = LocalDB.get(); const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_${Date.now()}.json`; document.body.appendChild(link); link.click(); link.remove(); };
     const handleRestore = (e) => { const file = e.target.files[0]; if(!file)return; const reader = new FileReader(); reader.onload = (ev) => { try { LocalDB.restore(JSON.parse(ev.target.result)); } catch { alert("文件错误"); } }; reader.readAsText(file); };
-    
     const handleLogout = () => { if(confirm("确定要退出登录吗？")) window.location.reload(); };
 
-    // 安全获取 taskProbabilities，防止为空
+    // 安全获取 taskProbabilities
     const safeProbs = taskProbabilities || { english: 50, sport: 30, life: 20 };
 
     return (<div className="fixed inset-0 bg-slate-100 z-50 p-4 overflow-y-auto">
@@ -575,7 +661,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
       <div className="flex gap-2 mb-4 overflow-x-auto">{['plan','library','monitor','theme','config'].map(t=><button key={t} onClick={()=>setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold capitalize whitespace-nowrap ${activeTab===t?'bg-blue-600 text-white':'bg-white text-slate-600'}`}>{t}</button>)}</div>
       
       {activeTab==='plan' && <div className="bg-white p-4 rounded shadow">
-         <h3 className="font-bold mb-2">待推送队列 (全量)</h3>
+         <h3 className="font-bold mb-2">任务队列 ({sortedLibrary.length})</h3>
          {sortedLibrary.length===0?<p className="text-slate-400 text-sm">无任务</p>:sortedLibrary.map(i=>{
             const pending = isPending(i.id);
             return (
@@ -584,11 +670,12 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
                   <div className="font-bold text-sm flex items-center gap-2">
                      {i.title}
                      {pending && <span className="bg-blue-100 text-blue-700 text-[10px] px-1 rounded">进行中</span>}
+                     {i.cycleMode === 'daily' && <span className="bg-orange-100 text-orange-700 text-[10px] px-1 rounded flex items-center gap-1"><RotateCw size={10}/> 每日</span>}
                   </div>
                   <div className="text-[10px] text-slate-400">计划: {getScheduledTimeDisplay(pushStart, i.nextReview)}</div>
                </div>
                <button 
-                  onClick={() => handlePromote(i)} 
+                  onClick={() => { onPromoteTask(i); alert("已插队推送"); refresh(); }} 
                   disabled={pending}
                   className={`px-3 py-1 rounded text-xs font-bold border ${pending ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-green-100 text-green-700 border-green-200'}`}
                >
@@ -599,18 +686,27 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
       </div>}
 
       {activeTab==='library' && <div className="space-y-6">
-         <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><h3 className="font-bold mb-2 flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3><textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词，逗号分隔 (如: apple, banana)"/><button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成</button></div>
+         <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><h3 className="font-bold mb-2 flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3><textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词，逗号分隔 (如: apple, banana)"/><button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成 (艾宾浩斯)</button></div>
          <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-slate-300">
            <h3 className="font-bold mb-4">手动添加任务</h3>
            <div className="flex gap-2 mb-3"><button onClick={()=>setNewTaskType('generic')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='generic'?'bg-slate-200 border-slate-400':''}`}>通用任务</button><button onClick={()=>setNewTaskType('english')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='english'?'bg-purple-100 border-purple-400 text-purple-700':''}`}>英语任务</button></div>
+           
            <div className="space-y-3">
-             <div className="flex gap-2"><input className="flex-1 border p-2 rounded" value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)} placeholder="任务名称 (必填)" /><input className="w-20 border p-2 rounded" type="number" value={newTaskReward} onChange={e=>setNewTaskReward(e.target.value)} placeholder="奖励" /></div>
+             <div className="flex gap-2"><input className="flex-1 border p-2 rounded" value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)} placeholder="任务名称" /><input className="w-20 border p-2 rounded" type="number" value={newTaskReward} onChange={e=>setNewTaskReward(e.target.value)} placeholder="奖励" /></div>
+             
+             {/* 循环模式选择 */}
+             <div className="flex items-center gap-4 text-sm text-slate-600 bg-slate-50 p-2 rounded">
+                <span className="font-bold">循环模式:</span>
+                <label className="flex items-center gap-1"><input type="radio" name="cycle" checked={newTaskCycle==='ebbinghaus'} onChange={()=>setNewTaskCycle('ebbinghaus')}/> 艾宾浩斯 (记忆)</label>
+                <label className="flex items-center gap-1"><input type="radio" name="cycle" checked={newTaskCycle==='daily'} onChange={()=>setNewTaskCycle('daily')}/> 每日打卡 (习惯)</label>
+             </div>
+
              {newTaskType === 'english' && <div className="bg-purple-50 p-3 rounded border border-purple-100 space-y-2"><div className="flex gap-2"><input className="flex-1 border p-2 rounded text-sm" placeholder="英文单词" value={flashcardWord} onChange={e=>setFlashcardWord(e.target.value)} /><input className="flex-1 border p-2 rounded text-sm" placeholder="中文释义" value={flashcardTrans} onChange={e=>setFlashcardTrans(e.target.value)} /></div><input className="w-full border p-2 rounded text-sm" placeholder="图片 URL" value={flashcardImg} onChange={e=>setFlashcardImg(e.target.value)} /><input className="w-full border p-2 rounded text-sm" placeholder="发音 URL" value={flashcardAudio} onChange={e=>setFlashcardAudio(e.target.value)} /></div>}
              {newTaskType === 'generic' && <input className="w-full border p-2 rounded text-sm" placeholder="图片 URL (选填)" value={flashcardImg} onChange={e=>setFlashcardImg(e.target.value)} />}
+             
              <div className="flex gap-2"><button onClick={handleAddToLibrary} className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-bold">加入计划库</button><button onClick={handlePush} className="flex-1 bg-slate-800 text-white py-3 rounded-lg font-bold">立即推送</button></div>
            </div>
          </div>
-         <div className="bg-white p-4 rounded-xl shadow-sm"><div className="flex justify-between items-center mb-4"><h3 className="font-bold">任务库 ({sortedLibrary.length})</h3><div className="flex gap-2"><button onClick={handleExport} className="text-xs text-blue-600">导出CSV</button></div></div><div className="space-y-2 max-h-[300px] overflow-y-auto">{sortedLibrary.map(i=>(<div key={i.id} className="flex justify-between border-b p-2 items-center"><div><div className="font-bold text-sm">{i.title}</div><div className="text-xs text-slate-400">Lv.{i.memoryLevel}</div></div><button onClick={()=>onManageLibrary('del',i.id)} className="text-red-400 p-2"><Trash2 size={16}/></button></div>))}</div></div>
       </div>}
 
       {activeTab==='theme' && <div className="bg-white p-4 rounded shadow space-y-4">
@@ -632,20 +728,12 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
            <div><label className="text-xs text-slate-500">结束时间</label><input className="border w-full p-2 rounded" type="number" value={pushEnd} onChange={e=>setPushEnd(e.target.value)}/></div>
            <div className="col-span-2"><label className="text-xs text-slate-500">每日上限</label><input className="border w-full p-2 rounded" type="number" value={dailyLimit} onChange={e=>setDailyLimit(e.target.value)}/></div>
         </div>
-        <div className="border-t pt-4"><label className="text-xs text-slate-500 block mb-2">随机任务概率</label>
-        {['english','sport','life'].map(type=>(
-            <div key={type} className="flex items-center gap-2 mb-2">
-                <span className="text-xs w-12 capitalize">{type}</span>
-                <input type="range" className="flex-1" min="0" max="100" value={safeProbs[type]||30} onChange={e=>setTaskProbabilities(p=>({...p,[type]:parseInt(e.target.value)}))}/>
-                <span className="text-xs w-8">{safeProbs[type]}%</span>
-            </div>
-        ))}
-        </div>
+        <div className="border-t pt-4"><label className="text-xs text-slate-500 block mb-2">随机任务概率</label>{['english','sport','life'].map(type=>(<div key={type} className="flex items-center gap-2 mb-2"><span className="text-xs w-12 capitalize">{type}</span><input type="range" className="flex-1" min="0" max="100" value={safeProbs[type]||30} onChange={e=>setTaskProbabilities(p=>({...p,[type]:parseInt(e.target.value)}))}/><span className="text-xs w-8">{safeProbs[type]}%</span></div>))}</div>
         <button onClick={handleSaveConfig} className="bg-slate-800 text-white w-full py-3 rounded font-bold">保存配置</button>
         <div className="border-t pt-4 grid grid-cols-2 gap-3"><button onClick={handleBackup} className="p-3 bg-slate-100 rounded text-xs font-bold">备份数据</button><button onClick={()=>fileInputRef.current.click()} className="p-3 bg-slate-100 rounded text-xs font-bold">恢复数据</button><input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div>
         <div className="pt-4 border-t flex justify-between"><button onClick={onForceSync} className="text-blue-600 text-xs flex gap-1"><Cloud size={14}/> 强制覆盖云端数据</button><button onClick={handleLogout} className="text-red-500 text-xs">退出</button></div></div>}
       
-      {activeTab==='monitor' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">实时待办</h3>{pendingTasks.map(t=><div key={t.id} className="p-2 border-b flex justify-between items-center"><span className="text-sm">{t.title}</span><button onClick={()=>onDeleteTask(t.id)} className="text-red-500 text-xs border px-2 py-1 rounded">撤回</button></div>)}</div>}
+      {activeTab==='monitor' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-4">进行中任务 ({pendingTasks.length})</h3>{pendingTasks.length === 0 ? <p className="text-slate-400">孩子当前空闲</p> : pendingTasks.map(t=><div key={t.id} className="p-3 border-b flex justify-between items-center"><span className="text-sm font-bold">{t.title}</span><div className="flex gap-2"><button onClick={onNudgeKid} className="text-blue-500 text-xs border border-blue-200 px-2 py-1 rounded flex items-center gap-1"><Bell size={12}/> 提醒</button><button onClick={()=>onDeleteTask(t.id)} className="text-red-500 text-xs border border-red-200 px-2 py-1 rounded">撤回</button></div></div>)}</div>}
       {activeTab==='history' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">完成记录</h3>{completedTasks.map(t=><div key={t.id} className="p-2 border-b text-sm flex justify-between"><span>{t.title}</span><span className="text-green-600">{formatTime(t.completedAt)}</span></div>)}</div>}
     </div>);
 };
@@ -729,6 +817,7 @@ export default function App() {
 
   const persist = (newData) => { setData(newData); CloudAPI.sync(session.uid, newData, session.mode); };
   
+  // 强制同步：把当前本地数据推送到云端 (解决手机端无法同步的问题)
   const handleForceSync = async () => {
     if(!session) return;
     if(confirm("确定要将当前设备的本地数据覆盖到云端吗？")) {
@@ -737,26 +826,60 @@ export default function App() {
     }
   };
   
-  // 自动心跳同步 (新增)
+  // 核心升级：心跳同步 (5秒一次) + 提醒音效
   useEffect(() => {
     if (!session || session.mode !== 'cloud') return;
     const interval = setInterval(async () => {
        const cloudData = await CloudAPI.fetchData(session.uid);
-       // 简单对比 task 数量或 ID 变化
-       if (cloudData && JSON.stringify(cloudData.tasks) !== JSON.stringify(data.tasks)) {
-           console.log("Auto sync: New data detected");
-           setData(cloudData);
-           playSystemSound('patrol'); // 提示音
+       // 检查 nudge 变化 (播放提醒)
+       if (cloudData?.user?.nudge && cloudData.user.nudge !== data?.user?.nudge) {
+           console.log("Nudge received!");
+           playSystemSound('patrol'); 
        }
-    }, 10000); // 10秒检查一次
+       // 检查数据是否有变化
+       if (cloudData && JSON.stringify(cloudData.tasks) !== JSON.stringify(data.tasks)) {
+           console.log("Syncing new tasks...");
+           setData(prev => ({ ...cloudData })); // 强制更新
+       }
+    }, 5000); 
     return () => clearInterval(interval);
-  }, [session, data]);
+  }, [session, data]); // 依赖 data 以便对比
+
+  const handleNudgeKid = () => {
+     const newData = { ...data };
+     newData.user.nudge = Date.now(); // 更新时间戳触发提醒
+     persist(newData);
+     alert("已发送提醒！孩子设备将播放提示音。");
+  };
 
   const handleComplete = (task) => {
     const newData = { ...data };
     const t = newData.tasks.find(x => x.id === task.id);
     if(t) { t.status = 'completed'; t.completedAt = Date.now(); }
     newData.user.coins += task.reward; newData.user.xp += task.reward;
+    
+    // 循环任务逻辑 (Cycle Mode)
+    if (task.cycleMode === 'daily' && task.libraryId) {
+       const libItem = newData.library.find(i => i.id === task.libraryId);
+       if (libItem) {
+          // 每日任务不升级，重置到明天同一时间
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          // 保持原定小时
+          const originalHour = new Date(libItem.nextReview).getHours();
+          tomorrow.setHours(originalHour, 0, 0, 0);
+          libItem.nextReview = tomorrow.getTime();
+       }
+    } else if (task.libraryId) {
+        // 艾宾浩斯升级
+        const item = newData.library.find(i => i.id === task.libraryId);
+        if (item) {
+           const lv = item.memoryLevel || 0; const nextLv = Math.min(lv + 1, 6);
+           const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + REVIEW_INTERVALS[nextLv]); nextDate.setHours(19,0,0,0);
+           item.memoryLevel = nextLv; item.nextReview = nextDate.getTime();
+        }
+    }
+
     persist(newData);
     setActiveFlashcardTask(null);
     setRewardData({ coins: task.reward, xp: task.reward });
@@ -766,10 +889,19 @@ export default function App() {
     setIsPatrolling(true); speak("雷达启动");
     setTimeout(() => {
       const newData = { ...data };
-      const candidate = newData.library.find(i => !newData.tasks.find(t=>t.libraryId===i.id && t.status==='pending'));
-      if(candidate) newData.tasks.push({...candidate, id: generateId(), status:'pending', createdAt: Date.now(), libraryId: candidate.id});
-      else { const w = enrichWordTask('random'); newData.tasks.push({id:generateId(), title:`练习:${w.word}`, type:'english', reward:15, flashcardData:w, status:'pending', createdAt:Date.now()}); }
-      persist(newData); setIsPatrolling(false); speak("发现任务");
+      // 优先从库里捞 (符合时间窗口的)
+      const now = Date.now();
+      const candidate = newData.library.find(i => i.nextReview <= now && !newData.tasks.find(t=>t.libraryId===i.id && t.status==='pending'));
+      
+      if(candidate) {
+          newData.tasks.push({...candidate, id: generateId(), status:'pending', createdAt: Date.now(), libraryId: candidate.id});
+          speak("发现计划任务！");
+      } else { 
+          const w = enrichWordTask('random'); 
+          newData.tasks.push({id:generateId(), title:`练习:${w.word}`, type:'english', reward:15, flashcardData:w, status:'pending', createdAt:Date.now()}); 
+          speak("发现随机任务！");
+      }
+      persist(newData); setIsPatrolling(false);
     }, 2000);
   };
 
@@ -777,7 +909,7 @@ export default function App() {
   const handleAddTask = (item) => { const newData={...data}; newData.tasks.push({...item, id:generateId(), status:'pending'}); persist(newData); };
   const handleDeleteTask = (id) => { const newData={...data}; newData.tasks=newData.tasks.filter(t=>t.id!==id); persist(newData); };
   const handleUpdateProfile = (u) => { const newData={...data}; newData.user={...newData.user,...u}; persist(newData); };
-  // 核心修复：提升状态
+  
   const handlePromoteTask = (libraryItem) => {
     const newData = { ...data };
     const existing = newData.tasks.find(t => t.libraryId === libraryItem.id && t.status === 'pending');
@@ -815,7 +947,7 @@ export default function App() {
           onForceSync={handleForceSync}
           onLogout={handleLogout}
         />
-        {isParentMode && <ParentDashboard userProfile={data.user} tasks={data.tasks} libraryItems={data.library} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} onUpdateProfile={handleUpdateProfile} onManageLibrary={handleManageLibrary} onClose={() => setIsParentMode(false)} onDataChange={() => setData(LocalDB.get())} sessionUid={session.uid} onForceSync={handleForceSync} onPromoteTask={handlePromoteTask} />}
+        {isParentMode && <ParentDashboard userProfile={data.user} tasks={data.tasks} libraryItems={data.library} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} onUpdateProfile={handleUpdateProfile} onManageLibrary={handleManageLibrary} onClose={() => setIsParentMode(false)} onDataChange={() => setData(LocalDB.get())} sessionUid={session.uid} onForceSync={handleForceSync} onPromoteTask={handlePromoteTask} onNudgeKid={handleNudgeKid} />}
         {activeFlashcardTask && <FlashcardGame task={activeFlashcardTask} onClose={() => setActiveFlashcardTask(null)} onComplete={handleComplete} />}
         {rewardData && <RewardModal rewards={rewardData} onClose={() => setRewardData(null)} />}
         {showCollection && <CollectionModal collection={data.collection || {}} onClose={() => setShowCollection(false)} />}
