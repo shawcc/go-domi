@@ -126,12 +126,13 @@ const sanitizeData = (incomingData) => {
     user: { 
         ...DEFAULT_USER_DATA.user, 
         ...safeUser, 
-        themeConfig: { ...DEFAULT_USER_DATA.user.themeConfig, ...safeUser.themeConfig },
-        taskProbabilities: { ...DEFAULT_USER_DATA.user.taskProbabilities, ...safeUser.taskProbabilities }
+        themeConfig: { ...DEFAULT_USER_DATA.user.themeConfig, ...(safeUser.themeConfig || {}) },
+        // 🛡️ 核心修复：确保 taskProbabilities 是对象，防止崩溃
+        taskProbabilities: { ...DEFAULT_USER_DATA.user.taskProbabilities, ...(safeUser.taskProbabilities || {}) }
     },
     tasks: Array.isArray(incomingData.tasks) ? incomingData.tasks : [],
     library: Array.isArray(incomingData.library) ? incomingData.library : [],
-    collection: { ...DEFAULT_USER_DATA.collection, ...incomingData.collection }
+    collection: { ...DEFAULT_USER_DATA.collection, ...(incomingData.collection || {}) }
   };
 };
 
@@ -376,7 +377,7 @@ const LoginScreen = ({ onLogin }) => {
       <div className="relative z-10 w-full max-w-sm bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V18.2</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V18.3</p>
         
         {SERVER_IP && (
             <div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between">
@@ -532,7 +533,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
         });
         setSaveStatus('theme');
         setTimeout(() => setSaveStatus(''), 2000);
-        alert("✅ 主题已更新！请关闭控制台查看效果");
+        alert("✅ 主题已更新！");
       } catch (e) {
         console.error(e);
         alert("保存失败，请重试");
@@ -553,6 +554,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
 
     const handleExport = () => { const BOM = "\uFEFF"; const rows = safeLibrary.map(item => `${(item.title||"").replace(/,/g,"，")},${item.type||"generic"},${item.reward||10},${item.flashcardData?.word||""}`); const blob = new Blob([BOM + "标题,类型,奖励,单词\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = "tasks.csv"; document.body.appendChild(link); link.click(); link.remove(); };
     const handleBackup = () => { const data = LocalDB.get(); const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_${Date.now()}.json`; document.body.appendChild(link); link.click(); link.remove(); };
+    // 修复：补全 handleRestore 实现
     const handleRestore = (e) => { const file = e.target.files[0]; if(!file)return; const reader = new FileReader(); reader.onload = (ev) => { try { LocalDB.restore(JSON.parse(ev.target.result)); } catch { alert("文件错误"); } }; reader.readAsText(file); };
     
     const handleLogout = () => { if(confirm("确定要退出登录吗？")) window.location.reload(); };
