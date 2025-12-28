@@ -5,7 +5,7 @@ import {
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
   Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
-  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe, Info, Play, RotateCw, Bell, Layers, Edit3, PlusCircle, MinusCircle, Book
+  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe, Info, Play, RotateCw, Bell, Layers, Edit3, PlusCircle, MinusCircle, Book, VolumeX
 } from 'lucide-react';
 
 // ==========================================
@@ -101,7 +101,7 @@ class ErrorBoundary extends React.Component {
 // ==========================================
 // --- 2. 数据引擎 ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_data_v24_mega_library'; 
+const STORAGE_KEY = 'go_domi_data_v21_custom_levels'; 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
 const CRYSTAL_STAGES = [
@@ -240,57 +240,51 @@ const CloudAPI = {
 // ==========================================
 const PUZZLE_CONFIG = { totalPieces: 9, image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80" };
 
-// 🌟 海量预置词库 + 智能图片生成器
-const getImgUrl = (keyword) => {
-    let hash = 0;
-    for (let i = 0; i < keyword.length; i++) {
-        hash = keyword.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const seed = Math.abs(hash);
-    return `https://image.pollinations.ai/prompt/cute cartoon ${keyword} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${seed}`;
-};
-
+// 🌟 精选词库：稳定的 Unsplash 图片链接
 const SYSTEM_DICTIONARY = {
-  // Body
-  'head': '头', 'hands': '手', 'arms': '手臂', 'legs': '腿', 'eyes': '眼睛', 'nose': '鼻子', 'mouth': '嘴巴', 'ears': '耳朵', 'elbow': '手肘',
-  // Colors
-  'red': '红色', 'blue': '蓝色', 'yellow': '黄色', 'green': '绿色', 'purple': '紫色', 'orange': '橙色',
-  // Animals
-  'fish': '鱼', 'rabbit': '兔子', 'cat': '猫', 'tiger': '老虎', 'tigers': '老虎', 'dog': '狗', 'elephant': '大象', 'bear': '熊', 'bears': '熊', 'pandas': '熊猫', 'goat': '山羊', 'goats': '山羊', 'hippo': '河马', 'squirrel': '松鼠', 'frog': '青蛙', 'snail': '蜗牛', 'hedgehog': '刺猬', 'butterfly': '蝴蝶', 'dragonfly': '蜻蜓', 'beetle': '甲虫', 'grasshopper': '蚱蜢', 'snake': '蛇', 'dolphin': '海豚', 'whale': '鲸鱼', 'starfish': '海星', 'octopus': '章鱼', 'jellyfish': '水母', 'seahorse': '海马', 'clownfish': '小丑鱼', 'butterflyfish': '蝴蝶鱼', 'giant clam': '巨型蛤蜊', 'sea turtle': '海龟', 'fox': '狐狸', 'zebra': '斑马', 'cow': '牛', 'cows': '牛', 'horse': '马', 'horses': '马', 'sheep': '绵羊', 'chicken': '鸡', 'chickens': '鸡', 'pig': '猪', 'wings': '翅膀',
-  // Transport
-  'car': '汽车', 'cars': '汽车', 'bus': '公交车', 'jet': '喷气机', 'van': '货车', 'boat': '船', 'robot': '机器人', 'robots': '机器人', 'kite': '风筝', 'tractor': '拖拉机',
-  // Food
-  'apple': '苹果', 'watermelons': '西瓜', 'oranges': '橙子', 'kiwis': '猕猴桃', 'peaches': '桃子', 'strawberries': '草莓', 'strawberry': '草莓', 'mango': '芒果', 'carrots': '胡萝卜', 'cucumbers': '黄瓜', 'potatoes': '土豆', 'tomatoes': '西红柿', 'pumpkins': '南瓜', 'pumpkin seeds': '南瓜子', 'peanuts': '花生', 'corn': '玉米', 'wheat': '小麦', 'cotton': '棉花', 'nuts': '坚果', 'beef': '牛肉', 'ham': '火腿', 'bread': '面包', 'milk': '牛奶', 'yoghurt': '酸奶', 'eggs': '鸡蛋', 'vanilla': '香草', 'chocolate': '巧克力', 'doughnuts': '甜甜圈', 'ice lollies': '冰棍', 'jelly': '果冻', 'cake': '蛋糕', 'cookies': '曲奇饼', 'popcorn': '爆米花', 'pizza': '披萨', 'hot dog': '热狗', 'hamburger': '汉堡包', 'spaghetti': '意大利面', 'cotton candy': '棉花糖', 'ice cream': '冰淇淋', 'pineapple jam': '菠萝酱', 'cherry jam': '樱桃酱', 'blueberry jam': '蓝莓酱', 'strawberry jam': '草莓酱', 'candies': '糖果', 'chips': '薯片', 'Dairy': '乳制品', 'Fruits': '水果', 'Vegetables': '蔬菜', 'Grains': '谷物', 'Meat': '肉类',
-  // Nature/Objects
-  'castle': '城堡', 'bridge': '桥', 'wall': '墙', 'rainbow': '彩虹', 'stars': '星星', 'sun': '太阳', 'moon': '月亮', 'tree': '树', 'grass': '草', 'flower': '花', 'flowers': '花朵', 'petals': '花瓣', 'leaves': '叶子', 'leaf': '叶子', 'stem': '茎', 'roots': '根', 'sunflowers': '向日葵', 'roses': '玫瑰', 'lilies': '百合', 'vine': '藤蔓', 'nest': '鸟巢', 'barn': '谷仓', 'windmill': '风车', 'coral reef': '珊瑚礁', 'seashell': '贝壳', 'pebble': '鹅卵石', 'sand': '沙子', 'sandcastle': '沙堡', 'pyramid': '金字塔', 'ink': '墨水', 'trash': '垃圾', 'trash bin': '垃圾桶', 'teddy': '泰迪熊', 'pillow': '枕头', 'quilt': '被子', 'umbrella': '雨伞', 'shoes': '鞋子', 'wig': '假发', 'bow tie': '领结', 'shovel': '铲子', 'rake': '耙子', 'bucket': '水桶', 'watering can': '洒水壶',
-  // People/Roles
-  'dad': '爸爸', 'mum': '妈妈', 'brother': '哥哥/弟弟', 'sister': '姐姐/妹妹', 'king': '国王', 'queen': '王后', 'wizard': '巫师', 'witch': '女巫', 'clown': '小丑', 'mermaid': '美人鱼',
-  // Actions
-  'play the guitar': '弹吉他', 'play the violin': '拉小提琴', 'sing': '唱歌', 'dance': '跳舞', 'fly a kite': '放风筝', 'swim': '游泳', 'hike': '徒步', 'build a snowman': '堆雪人', 'collect the eggs': '收鸡蛋', 'feed the chickens': '喂鸡', 'milk the cow': '挤牛奶', 'feed the cows': '喂牛', 'jump out of water': '跳出水面', 'blow water': '喷水', 'eat barbecue': '吃烧烤', 'eat marshmallows': '吃棉花糖', 'watch stars': '看星星', 'watch sunrise': '看日出', 'Brush my teeth up and down': '上下刷牙', 'Brush my teeth round and round': '转圈刷牙', 'Brush my teeth in and out': '里外刷牙', 'Rinse, rinse, spit': '漱口吐掉', 'Wet my hands': '打湿双手', 'Get hand soap': '取洗手液', 'Rub my hands': '搓手', 'Rinse my hands': '冲洗双手', 'Dry my hands': '擦干双手',
-  // Weather/Seasons
-  'winter': '冬天', 'spring': '春天', 'autumn': '秋天', 'summer': '夏天', 'warm': '温暖', 'hot': '热', 'cool': '凉爽', 'cold': '冷', 'windy': '多风', 'rainy': '下雨', 'snowy': '下雪', 'sunny': '晴朗',
-  // Clothing
-  'sweater': '毛衣', 'coat': '外套', 'jeans': '牛仔裤', 'boots': '靴子', 'straw hat': '草帽', 'raincoat': '雨衣', 'scarf': '围巾', 'mittens': '连指手套',
-  // Prepositions (Abstract)
-  'on': '上面', 'in': '里面', 'under': '下面', 'behind': '后面'
+  // 动物
+  'cat': { cn: '猫', img: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&q=80' },
+  'dog': { cn: '狗', img: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80' },
+  'elephant': { cn: '大象', img: 'https://images.unsplash.com/photo-1557050543-4d5f490d49cd?w=400&q=80' },
+  'lion': { cn: '狮子', img: 'https://images.unsplash.com/photo-1546182990-dced71b4827f?w=400&q=80' },
+  'bird': { cn: '鸟', img: 'https://images.unsplash.com/photo-1444464666168-49d633b86797?w=400&q=80' },
+  'fish': { cn: '鱼', img: 'https://images.unsplash.com/photo-1524704654690-b56c05c78a00?w=400&q=80' },
+  
+  // 水果/食物
+  'apple': { cn: '苹果', img: 'https://images.unsplash.com/photo-1570913149827-d2ac84ab3f9a?w=400&q=80' },
+  'banana': { cn: '香蕉', img: 'https://images.unsplash.com/photo-1571771896338-a3d481609fcd?w=400&q=80' },
+  'orange': { cn: '橙子', img: 'https://images.unsplash.com/photo-1582979512210-99b6a5338509?w=400&q=80' },
+  'ice cream': { cn: '冰淇淋', img: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=400&q=80' },
+  
+  // 自然/交通
+  'flower': { cn: '花', img: 'https://images.unsplash.com/photo-1560717789-0ac7c58ac90a?w=400&q=80' },
+  'tree': { cn: '树', img: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=400&q=80' },
+  'car': { cn: '汽车', img: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=400&q=80' },
+  'bus': { cn: '公交车', img: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=400&q=80' },
+  'airplane': { cn: '飞机', img: 'https://images.unsplash.com/photo-1559087867-ce4c91325525?w=400&q=80' },
+  
+  // 身体
+  'head': { cn: '头', img: 'https://images.unsplash.com/photo-1531123414780-f74242c2b052?w=400&q=80' },
+  'hand': { cn: '手', img: 'https://images.unsplash.com/photo-1466695108335-44674aa2058b?w=400&q=80' },
 };
 
 const enrichWordTask = (wordInput) => {
   const word = wordInput.trim();
   const lowerWord = word.toLowerCase();
   
-  // 1. 查找中文翻译
-  const cn = SYSTEM_DICTIONARY[lowerWord] || '';
-  
-  // 2. 生成稳定图片 URL (带缓存Seed)
-  const imageUrl = getImgUrl(word);
+  // 1. 查找精品库
+  if (SYSTEM_DICTIONARY[lowerWord]) {
+      return { 
+          word, 
+          translation: SYSTEM_DICTIONARY[lowerWord].cn, 
+          image: SYSTEM_DICTIONARY[lowerWord].img, 
+          audio: '' // 强制使用 TTS，不依赖外部音频
+      };
+  }
 
-  return { 
-      word, 
-      translation: cn, 
-      image: imageUrl, 
-      audio: '' // 留空，使用浏览器 TTS 朗读
-  };
+  // 2. 如果没有，留空让家长配置
+  // 不再使用不稳定的 AI 生成
+  return { word, translation: '', image: '', audio: '' };
 };
 
 const THEMES = {
@@ -338,32 +332,28 @@ const getScheduledTimeDisplay = (pushStart, itemNextReview) => {
 const getNextBeijingScheduleTime = (startHour = 19) => { const t = getBeijingTime(); t.setHours(startHour - 8,0,0,0); if(Date.now() >= t.getTime()) t.setDate(t.getDate()+1); return t.getTime(); };
 const formatTime = (ts) => new Date(ts).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
 
-const speak = (text) => {
+// 核心 TTS 修复：确保语音包加载，支持中文和英文
+const speak = (text, lang = 'zh-CN') => {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'zh-CN'; 
-  const zh = window.speechSynthesis.getVoices().find(v => v.lang.includes('zh'));
-  if (zh) u.voice = zh;
+  u.lang = lang;
+  u.rate = lang === 'en-US' ? 0.8 : 1.0;
+  
+  // 尝试匹配最佳语音
+  const voices = window.speechSynthesis.getVoices();
+  const bestVoice = voices.find(v => v.lang.includes(lang.replace('_', '-'))) || voices[0];
+  if(bestVoice) u.voice = bestVoice;
+  
   window.speechSynthesis.speak(u);
 };
-const speakEnglish = (text) => {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'en-US'; u.rate = 0.8; // 稍微放慢语速
-  window.speechSynthesis.speak(u);
-};
+
 const playTaskAudio = (text, audioUrl) => {
-  if (audioUrl) {
-    const safeUrl = proxifyUrl(audioUrl);
-    const audio = new Audio(safeUrl);
-    audio.play().catch(() => speakEnglish(text));
-  } else {
-    // 强制 TTS
-    speakEnglish(text);
-  }
+  // 即使有 audioUrl，我们也优先使用 TTS，或者只在 TTS 失败时使用 audioUrl
+  // 为了稳定性，这里统一使用 TTS
+  speak(text, 'en-US'); 
 };
+
 const playSystemSound = (type) => {
    const sounds = {
      alert: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
@@ -395,11 +385,11 @@ const LoginScreen = ({ onLogin }) => {
   };
 
   return (
-    <div className="fixed inset-0 w-screen h-screen bg-slate-900 flex flex-col landscape:flex-row items-center justify-center text-white p-6 z-[200]">
+    <div className="fixed inset-0 w-screen h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-6 z-[200]">
       <div className="relative z-10 w-full max-w-sm bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V22.0 (精品库版)</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V22.1 (TTS修复)</p>
         {SERVER_IP && (<div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between"><span className="flex gap-2"><Server size={14}/> {SERVER_IP}</span><button onClick={()=>setUseDirect(!useDirect)} className={`text-[10px] px-1 rounded ${useDirect?'bg-red-500 text-white':'text-slate-500'}`}>{useDirect ? '强制直连' : '代理模式'}</button></div>)}
         <form onSubmit={handleSubmit} className="space-y-4"><div className="relative"><User className="absolute left-3 top-3.5 text-slate-400" size={20} /><input type="text" className="w-full bg-slate-900/50 border border-slate-600 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-400" placeholder="特工代号" value={username} onChange={e => setUsername(e.target.value)} /></div><button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2">{loading ? <Loader2 className="animate-spin"/> : "连接基地"}</button></form>
         {errorMsg && <div className="mt-4 p-3 bg-red-900/50 border border-red-500/50 rounded-xl text-red-200 text-xs flex items-start gap-2"><AlertTriangle size={16} className="shrink-0 mt-0.5" /><span>{errorMsg}</span></div>}
@@ -423,7 +413,6 @@ const MainCharacter = ({ themeId, level, onClick, userProfile }) => {
   const [isPoked, setIsPoked] = useState(false);
   const handlePoke = () => { setIsPoked(true); if(onClick) onClick(); setTimeout(() => setIsPoked(false), 500); };
   
-  // 智能合并策略
   const stages = (userProfile?.levelStages && userProfile.levelStages.length > 0) 
                  ? userProfile.levelStages 
                  : (themeId === 'pokemon' ? POKEMON_STAGES : CRYSTAL_STAGES);
@@ -431,7 +420,6 @@ const MainCharacter = ({ themeId, level, onClick, userProfile }) => {
   const currentStage = [...stages].reverse().find(s => level >= s.minLevel) || stages[0];
   const stageIndex = stages.indexOf(currentStage);
   
-  // 安全获取 Icon
   const Icon = STAGE_ICONS[stageIndex % STAGE_ICONS.length] || Hexagon;
   const stageImage = currentStage.image ? proxifyUrl(currentStage.image) : null;
 
@@ -460,9 +448,7 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
   const task = tasks[0]; 
   const isProcessing = processingTasks.has(task.id);
   const isEnglish = task.type === 'english';
-  const rawImage = isEnglish ? task.flashcardData?.image : (task.image || task.flashcardData?.image);
-  const taskImage = proxifyUrl(rawImage);
-  const displayTitle = isEnglish ? "英语挑战" : task.title;
+  const taskImage = proxifyUrl(isEnglish ? task.flashcardData?.image : (task.image || task.flashcardData?.image));
   const assistantName = userProfile?.themeConfig?.assistantName || currentTheme.assistant;
   const [imgLoaded, setImgLoaded] = useState(false);
 
@@ -477,6 +463,14 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
                 {!imgLoaded && taskImage && <div className="absolute inset-0 flex items-center justify-center bg-slate-200"><Loader2 className="animate-spin text-slate-400"/></div>}
                 {taskImage ? <img src={taskImage} className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onLoad={() => setImgLoaded(true)} onError={(e)=>{e.target.style.display='none'; setImgLoaded(true);}} /> : <div className="text-6xl animate-bounce">{isEnglish?"A":"⚔️"}</div>}
             </div>
+            
+            {/* 手动播放声音按钮 - 解决自动播放限制 */}
+            {isEnglish && (
+                <button onClick={() => speak(task.flashcardData.word, 'en-US')} className="absolute top-16 right-6 bg-white p-2 rounded-full shadow-md text-blue-600 hover:scale-110 transition-transform">
+                    <Volume2 size={24} />
+                </button>
+            )}
+
             <div className="space-y-1 mb-6">
                <div className="text-xs font-bold uppercase opacity-60">来自 {assistantName} 的信号</div>
                <h1 className={`text-2xl font-black ${currentTheme.text === 'text-slate-100' ? 'text-white' : 'text-slate-800'}`}>{task.title}</h1>
@@ -519,9 +513,7 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
 
       <div className="flex-1 relative z-10 flex flex-col items-center justify-center pb-24">
          <div className="w-64 h-3 bg-black/10 rounded-full overflow-hidden mb-4 border border-black/5"><div className="h-full bg-blue-500 transition-all duration-1000" style={{width: `${progressPercent}%`}}></div></div>
-         
          <MainCharacter themeId={themeId} level={userProfile.level} xp={userProfile.xp} onClick={() => speak(currentTheme.currency)} userProfile={userProfile} />
-         
          <div className="fixed bottom-8 w-full flex justify-center gap-8 items-end pointer-events-none">
             <button onClick={()=>onOpenCollection('puzzle')} className="pointer-events-auto flex flex-col items-center gap-1 group"><div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg border-2 border-slate-100 group-active:scale-95 transition-all"><Puzzle className="text-yellow-500" size={24}/></div><span className="text-[10px] font-bold opacity-80 bg-black/20 px-2 rounded text-white">图鉴</span></button>
             <button onClick={onStartPatrol} disabled={isPatrolling} className="pointer-events-auto flex flex-col items-center gap-1 group -translate-y-4"><div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-xl border-4 border-white transition-all ${isPatrolling ? 'bg-slate-400' : 'bg-blue-600 hover:bg-blue-500'} group-active:scale-95`}><Radar className={`text-white w-8 h-8 ${isPatrolling?'animate-spin':''}`}/></div><span className="text-xs font-black uppercase tracking-widest bg-blue-600 text-white px-3 py-0.5 rounded-full shadow-lg">巡逻</span></button>
@@ -608,23 +600,9 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const handleUpload = async (e, type, idx) => {
        const file = e.target.files[0];
        if(!file) return;
-       
-       // 1. 本地即时预览 (Local Preview)
-       const localPreview = URL.createObjectURL(file);
-       if (type === 'mascot') setThemeMascot(localPreview);
-       else if (type === 'bg') setThemeBg(localPreview);
-       else if (type === 'stage' && idx !== undefined) {
-           const newStages = [...levelStages];
-           newStages[idx].image = localPreview;
-           setLevelStages(newStages);
-       }
-       
        setUploading(true);
        try {
-         // 2. 后端上传
          const url = await CloudAPI.upload(file);
-         
-         // 3. 替换为真实 URL
          if (type === 'mascot') setThemeMascot(url);
          else if (type === 'bg') setThemeBg(url);
          else if (type === 'stage' && idx !== undefined) {
@@ -894,7 +872,10 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
             <div className="p-8 text-center flex-1 overflow-y-auto landscape:w-1/2 landscape:flex landscape:flex-col landscape:justify-center">
             {step==='success' ? <div className="py-8"><Trophy size={80} className="mx-auto text-yellow-400"/><h2 className="text-3xl font-bold">挑战成功</h2></div> : <>
                 <h1 className="text-6xl font-bold text-blue-600 mb-4">{word}</h1>
-                <button onClick={()=>playTaskAudio(word, task.flashcardData?.audio)} className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full mb-8"><Headphones size={20}/> 听发音</button>
+                <div className="flex items-center justify-center gap-4 mb-8">
+                  <button onClick={()=>playTaskAudio(word, task.flashcardData?.audio)} className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-6 py-3 rounded-full hover:bg-blue-100 active:scale-95"><Headphones size={24}/> 听发音</button>
+                  <button onClick={()=>speak(word, 'en-US')} className="inline-flex items-center gap-2 bg-slate-50 text-slate-600 px-4 py-3 rounded-full hover:bg-slate-100 active:scale-95"><Volume2 size={24}/> 慢读</button>
+                </div>
                 {step==='learning' ? <button onClick={handleGoTeach} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-xl">教爷爷奶奶</button> : <div className="bg-slate-50 p-4 rounded-xl"><div className="flex justify-between items-center mb-2"><span className="text-xl font-mono font-bold">{mathQ.a} x {mathQ.b} = ?</span><input type="number" className="w-20 border rounded p-2 text-center" value={mathAns} onChange={e=>setMathAns(e.target.value)}/></div><button onClick={checkMath} className="w-full bg-green-500 text-white py-2 rounded font-bold">家长确认</button></div>}
             </>}
             </div>
