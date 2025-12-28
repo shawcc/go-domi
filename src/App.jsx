@@ -5,7 +5,7 @@ import {
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
   Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
-  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe, Info, Play, RotateCw, Bell, Layers, Edit3, PlusCircle, MinusCircle
+  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe, Info, Play, RotateCw, Bell, Layers, Edit3, PlusCircle, MinusCircle, Book
 } from 'lucide-react';
 
 // ==========================================
@@ -101,7 +101,7 @@ class ErrorBoundary extends React.Component {
 // ==========================================
 // --- 2. 数据引擎 ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_data_v22_fix_audio'; 
+const STORAGE_KEY = 'go_domi_data_v24_mega_library'; 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
 const CRYSTAL_STAGES = [
@@ -239,22 +239,60 @@ const CloudAPI = {
 // --- 3. 资源与常量 ---
 // ==========================================
 const PUZZLE_CONFIG = { totalPieces: 9, image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80" };
-const SYSTEM_DICTIONARY = {
-  'cat': { cn: '猫', img: '/assets/images/cat.jpg' }, 'dog': { cn: '狗', img: '/assets/images/dog.jpg' }, 
-  'apple': { cn: '苹果', img: '/assets/images/apple.jpg' }, 'banana': { cn: '香蕉', img: '/assets/images/banana.jpg' }, 
-  'head': { cn: '头', img: '/assets/images/head.jpg' }, 
+
+// 🌟 海量预置词库 + 智能图片生成器
+// 使用固定 Seed 保证同一单词每次图片一致，且缓存友好
+const getImgUrl = (keyword) => {
+    // 简单的字符串哈希，用于生成固定的随机种子
+    let hash = 0;
+    for (let i = 0; i < keyword.length; i++) {
+        hash = keyword.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const seed = Math.abs(hash);
+    return `https://image.pollinations.ai/prompt/cute cartoon ${keyword} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${seed}`;
 };
 
-// 修复：移除 audio 的默认生成，防止发音失败
+const SYSTEM_DICTIONARY = {
+  // Body
+  'head': '头', 'hands': '手', 'arms': '手臂', 'legs': '腿', 'eyes': '眼睛', 'nose': '鼻子', 'mouth': '嘴巴', 'ears': '耳朵', 'elbow': '手肘',
+  // Colors
+  'red': '红色', 'blue': '蓝色', 'yellow': '黄色', 'green': '绿色', 'purple': '紫色', 'orange': '橙色',
+  // Animals
+  'fish': '鱼', 'rabbit': '兔子', 'cat': '猫', 'tiger': '老虎', 'tigers': '老虎', 'dog': '狗', 'elephant': '大象', 'bear': '熊', 'bears': '熊', 'pandas': '熊猫', 'goat': '山羊', 'goats': '山羊', 'hippo': '河马', 'squirrel': '松鼠', 'frog': '青蛙', 'snail': '蜗牛', 'hedgehog': '刺猬', 'butterfly': '蝴蝶', 'dragonfly': '蜻蜓', 'beetle': '甲虫', 'grasshopper': '蚱蜢', 'snake': '蛇', 'dolphin': '海豚', 'whale': '鲸鱼', 'starfish': '海星', 'octopus': '章鱼', 'jellyfish': '水母', 'seahorse': '海马', 'clownfish': '小丑鱼', 'butterflyfish': '蝴蝶鱼', 'giant clam': '巨型蛤蜊', 'sea turtle': '海龟', 'fox': '狐狸', 'zebra': '斑马', 'cow': '牛', 'cows': '牛', 'horse': '马', 'horses': '马', 'sheep': '绵羊', 'chicken': '鸡', 'chickens': '鸡', 'pig': '猪', 'wings': '翅膀',
+  // Transport
+  'car': '汽车', 'cars': '汽车', 'bus': '公交车', 'jet': '喷气机', 'van': '货车', 'boat': '船', 'robot': '机器人', 'robots': '机器人', 'kite': '风筝', 'tractor': '拖拉机',
+  // Food
+  'apple': '苹果', 'watermelons': '西瓜', 'oranges': '橙子', 'kiwis': '猕猴桃', 'peaches': '桃子', 'strawberries': '草莓', 'strawberry': '草莓', 'mango': '芒果', 'carrots': '胡萝卜', 'cucumbers': '黄瓜', 'potatoes': '土豆', 'tomatoes': '西红柿', 'pumpkins': '南瓜', 'pumpkin seeds': '南瓜子', 'peanuts': '花生', 'corn': '玉米', 'wheat': '小麦', 'cotton': '棉花', 'nuts': '坚果', 'chicken': '鸡肉', 'beef': '牛肉', 'ham': '火腿', 'bread': '面包', 'milk': '牛奶', 'yoghurt': '酸奶', 'eggs': '鸡蛋', 'vanilla': '香草', 'chocolate': '巧克力', 'doughnuts': '甜甜圈', 'ice lollies': '冰棍', 'jelly': '果冻', 'cake': '蛋糕', 'cookies': '曲奇饼', 'popcorn': '爆米花', 'pizza': '披萨', 'hot dog': '热狗', 'hamburger': '汉堡包', 'spaghetti': '意大利面', 'cotton candy': '棉花糖', 'ice cream': '冰淇淋', 'pineapple jam': '菠萝酱', 'cherry jam': '樱桃酱', 'blueberry jam': '蓝莓酱', 'strawberry jam': '草莓酱', 'candies': '糖果', 'chips': '薯片', 'Dairy': '乳制品', 'Fruits': '水果', 'Vegetables': '蔬菜', 'Grains': '谷物', 'Meat': '肉类',
+  // Nature/Objects
+  'castle': '城堡', 'bridge': '桥', 'wall': '墙', 'rainbow': '彩虹', 'stars': '星星', 'sun': '太阳', 'moon': '月亮', 'tree': '树', 'grass': '草', 'flower': '花', 'flowers': '花朵', 'petals': '花瓣', 'leaves': '叶子', 'leaf': '叶子', 'stem': '茎', 'roots': '根', 'sunflowers': '向日葵', 'roses': '玫瑰', 'lilies': '百合', 'vine': '藤蔓', 'nest': '鸟巢', 'barn': '谷仓', 'windmill': '风车', 'coral reef': '珊瑚礁', 'seashell': '贝壳', 'pebble': '鹅卵石', 'sand': '沙子', 'sandcastle': '沙堡', 'pyramid': '金字塔', 'ink': '墨水', 'trash': '垃圾', 'trash bin': '垃圾桶', 'teddy': '泰迪熊', 'pillow': '枕头', 'quilt': '被子', 'umbrella': '雨伞', 'shoes': '鞋子', 'wig': '假发', 'bow tie': '领结', 'shovel': '铲子', 'rake': '耙子', 'bucket': '水桶', 'watering can': '洒水壶',
+  // People/Roles
+  'dad': '爸爸', 'mum': '妈妈', 'brother': '哥哥/弟弟', 'sister': '姐姐/妹妹', 'king': '国王', 'queen': '王后', 'wizard': '巫师', 'witch': '女巫', 'clown': '小丑', 'mermaid': '美人鱼',
+  // Actions
+  'play the guitar': '弹吉他', 'play the violin': '拉小提琴', 'sing': '唱歌', 'dance': '跳舞', 'fly a kite': '放风筝', 'swim': '游泳', 'hike': '徒步', 'build a snowman': '堆雪人', 'collect the eggs': '收鸡蛋', 'feed the chickens': '喂鸡', 'milk the cow': '挤牛奶', 'feed the cows': '喂牛', 'jump out of water': '跳出水面', 'blow water': '喷水', 'eat barbecue': '吃烧烤', 'eat marshmallows': '吃棉花糖', 'watch stars': '看星星', 'watch sunrise': '看日出', 'Brush my teeth up and down': '上下刷牙', 'Brush my teeth round and round': '转圈刷牙', 'Brush my teeth in and out': '里外刷牙', 'Rinse, rinse, spit': '漱口吐掉', 'Wet my hands': '打湿双手', 'Get hand soap': '取洗手液', 'Rub my hands': '搓手', 'Rinse my hands': '冲洗双手', 'Dry my hands': '擦干双手',
+  // Weather/Seasons
+  'winter': '冬天', 'spring': '春天', 'autumn': '秋天', 'summer': '夏天', 'warm': '温暖', 'hot': '热', 'cool': '凉爽', 'cold': '冷', 'windy': '多风', 'rainy': '下雨', 'snowy': '下雪', 'sunny': '晴朗',
+  // Clothing
+  'sweater': '毛衣', 'coat': '外套', 'jeans': '牛仔裤', 'boots': '靴子', 'straw hat': '草帽', 'raincoat': '雨衣', 'scarf': '围巾', 'mittens': '连指手套',
+  // Prepositions (Abstract)
+  'on': '上面', 'in': '里面', 'under': '下面', 'behind': '后面'
+};
+
 const enrichWordTask = (wordInput) => {
   const word = wordInput.trim();
   const lowerWord = word.toLowerCase();
-  const preset = SYSTEM_DICTIONARY[lowerWord];
-  const translation = preset ? preset.cn : ''; 
-  const imageUrl = (preset && preset.img) ? preset.img : `https://image.pollinations.ai/prompt/cute cartoon ${word} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${Math.random()}`;
-  // 移除 audioUrl，强制走 TTS
-  const audioUrl = ''; 
-  return { word, translation, image: imageUrl, audio: audioUrl };
+  
+  // 1. 查找中文翻译
+  const cn = SYSTEM_DICTIONARY[lowerWord] || '';
+  
+  // 2. 生成稳定图片 URL (带缓存Seed)
+  const imageUrl = getImgUrl(word);
+
+  return { 
+      word, 
+      translation: cn, 
+      image: imageUrl, 
+      audio: '' // 留空，使用浏览器 TTS 朗读
+  };
 };
 
 const THEMES = {
@@ -363,7 +401,7 @@ const LoginScreen = ({ onLogin }) => {
       <div className="relative z-10 w-full max-w-sm bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V22.0 (修复版)</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V22.0 (精品库版)</p>
         {SERVER_IP && (<div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between"><span className="flex gap-2"><Server size={14}/> {SERVER_IP}</span><button onClick={()=>setUseDirect(!useDirect)} className={`text-[10px] px-1 rounded ${useDirect?'bg-red-500 text-white':'text-slate-500'}`}>{useDirect ? '强制直连' : '代理模式'}</button></div>)}
         <form onSubmit={handleSubmit} className="space-y-4"><div className="relative"><User className="absolute left-3 top-3.5 text-slate-400" size={20} /><input type="text" className="w-full bg-slate-900/50 border border-slate-600 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-400" placeholder="特工代号" value={username} onChange={e => setUsername(e.target.value)} /></div><button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2">{loading ? <Loader2 className="animate-spin"/> : "连接基地"}</button></form>
         {errorMsg && <div className="mt-4 p-3 bg-red-900/50 border border-red-500/50 rounded-xl text-red-200 text-xs flex items-start gap-2"><AlertTriangle size={16} className="shrink-0 mt-0.5" /><span>{errorMsg}</span></div>}
@@ -387,6 +425,7 @@ const MainCharacter = ({ themeId, level, onClick, userProfile }) => {
   const [isPoked, setIsPoked] = useState(false);
   const handlePoke = () => { setIsPoked(true); if(onClick) onClick(); setTimeout(() => setIsPoked(false), 500); };
   
+  // 智能合并策略
   const stages = (userProfile?.levelStages && userProfile.levelStages.length > 0) 
                  ? userProfile.levelStages 
                  : (themeId === 'pokemon' ? POKEMON_STAGES : CRYSTAL_STAGES);
@@ -394,6 +433,7 @@ const MainCharacter = ({ themeId, level, onClick, userProfile }) => {
   const currentStage = [...stages].reverse().find(s => level >= s.minLevel) || stages[0];
   const stageIndex = stages.indexOf(currentStage);
   
+  // 安全获取 Icon
   const Icon = STAGE_ICONS[stageIndex % STAGE_ICONS.length] || Hexagon;
   const stageImage = currentStage.image ? proxifyUrl(currentStage.image) : null;
 
@@ -422,9 +462,11 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
   const task = tasks[0]; 
   const isProcessing = processingTasks.has(task.id);
   const isEnglish = task.type === 'english';
-  const taskImage = proxifyUrl(isEnglish ? task.flashcardData?.image : (task.image || task.flashcardData?.image));
+  const rawImage = isEnglish ? task.flashcardData?.image : (task.image || task.flashcardData?.image);
+  const taskImage = proxifyUrl(rawImage);
+  const displayTitle = isEnglish ? "英语挑战" : task.title;
   const assistantName = userProfile?.themeConfig?.assistantName || currentTheme.assistant;
-  const [imgLoaded, setImgLoaded] = useState(false); // 图片加载状态
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   useEffect(() => { const t = setTimeout(() => { playSystemSound('alert'); const intro = isEnglish ? "英语挑战！" : "紧急任务！"; const content = isEnglish ? "请完成一个单词练习" : task.title; setTimeout(() => speak(`${intro} ${content}`), 1000); }, 300); return () => clearTimeout(t); }, [task]);
   
@@ -433,9 +475,9 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
        <div className={`w-full max-w-sm ${currentTheme.card} rounded-3xl overflow-hidden shadow-2xl relative flex flex-col`}>
           <div className={`${currentTheme.primary} text-white p-3 flex items-center justify-center gap-2 animate-pulse`}><Siren size={20} /> <h2 className="text-lg font-black">紧急任务</h2></div>
           <div className="p-6 flex flex-col items-center text-center">
-            <div className="mb-4 w-40 h-40 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-slate-200 shadow-inner relative">
+            <div className="mb-4 w-48 h-48 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-slate-200 shadow-inner relative">
                 {!imgLoaded && taskImage && <div className="absolute inset-0 flex items-center justify-center bg-slate-200"><Loader2 className="animate-spin text-slate-400"/></div>}
-                {taskImage ? <img src={taskImage} className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onLoad={() => setImgLoaded(true)} onError={(e)=>{e.target.style.display='none'; setImgLoaded(true);}} /> : <div className="text-4xl">⚔️</div>}
+                {taskImage ? <img src={taskImage} className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onLoad={() => setImgLoaded(true)} onError={(e)=>{e.target.style.display='none'; setImgLoaded(true);}} /> : <div className="text-6xl animate-bounce">{isEnglish?"A":"⚔️"}</div>}
             </div>
             <div className="space-y-1 mb-6">
                <div className="text-xs font-bold uppercase opacity-60">来自 {assistantName} 的信号</div>
@@ -464,9 +506,8 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
   return (
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} flex flex-col relative`}>
       <DynamicBackground themeId={themeId} customBg={bgImg} />
-      
+      {isPatrolling && <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60"><div className="w-[300px] h-[300px] border-4 border-green-500 rounded-full animate-ping"></div><div className="mt-8 text-green-400 font-mono text-2xl font-black animate-pulse">SCANNING...</div></div>}
       <div onClick={onForceSync} className={`w-full py-1 text-center text-[10px] font-bold cursor-pointer transition-colors ${connectionMode === 'cloud' ? 'bg-green-600 text-white' : 'bg-red-600 text-white animate-pulse'}`}>{connectionMode === 'cloud' ? '🟢 基地在线' : `🔴 ${connectionMode === 'offline' ? '离线模式' : '连接异常'} (点击重试)`}</div>
-      
       <div className={`w-full p-4 flex justify-between items-center backdrop-blur-md z-10 ${headerBgClass}`}>
          <div className="flex items-center gap-3">
             <button onClick={onLogout} className="opacity-50 hover:opacity-100"><LogOut size={16}/></button>
@@ -496,7 +537,7 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
 };
 
 const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose, onDeleteTask, onUpdateProfile, onManageLibrary, onDataChange, sessionUid, onForceSync, onPromoteTask, onNudgeKid }) => {
-    const [activeTab, setActiveTab] = useState('plan'); 
+    const [activeTab, setActiveTab] = useState('library'); 
     const [saveStatus, setSaveStatus] = useState(''); 
     
     // Config states
@@ -529,6 +570,9 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const [flashcardAudio, setFlashcardAudio] = useState('');
     const [batchWords, setBatchWords] = useState('');
     const [uploading, setUploading] = useState(false);
+    
+    // 🔍 增加字典选择状态
+    const [selectedPreset, setSelectedPreset] = useState('');
 
     const mascotInputRef = useRef(null);
     const bgInputRef = useRef(null);
@@ -566,23 +610,9 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const handleUpload = async (e, type, idx) => {
        const file = e.target.files[0];
        if(!file) return;
-       
-       // 1. 本地即时预览 (Local Preview)
-       const localPreview = URL.createObjectURL(file);
-       if (type === 'mascot') setThemeMascot(localPreview);
-       else if (type === 'bg') setThemeBg(localPreview);
-       else if (type === 'stage' && idx !== undefined) {
-           const newStages = [...levelStages];
-           newStages[idx].image = localPreview;
-           setLevelStages(newStages);
-       }
-       
        setUploading(true);
        try {
-         // 2. 后端上传
          const url = await CloudAPI.upload(file);
-         
-         // 3. 替换为真实 URL
          if (type === 'mascot') setThemeMascot(url);
          else if (type === 'bg') setThemeBg(url);
          else if (type === 'stage' && idx !== undefined) {
@@ -627,6 +657,15 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
         if(levelStages.length <= 1) return alert("至少保留一个阶段");
         const newStages = levelStages.filter((_, i) => i !== idx);
         setLevelStages(newStages);
+    };
+    
+    // 选择预置词汇
+    const selectPreset = (key) => {
+        const item = SYSTEM_DICTIONARY[key];
+        setFlashcardWord(key);
+        setFlashcardTrans(item.cn);
+        setFlashcardImg(item.img);
+        setNewTaskType('english');
     };
 
     const constructTaskData = () => ({
@@ -691,6 +730,19 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
       </div>}
 
       {activeTab==='library' && <div className="space-y-6">
+         {/* 精选词库推荐 */}
+         <div className="bg-white p-4 rounded-xl shadow-sm border border-orange-100">
+             <h3 className="font-bold mb-2 flex items-center gap-2 text-orange-800"><Book size={16}/> 推荐词库 (高清图+发音)</h3>
+             <div className="flex gap-2 overflow-x-auto pb-2">
+                 {Object.keys(SYSTEM_DICTIONARY).map(k => (
+                     <button key={k} onClick={() => selectPreset(k)} className="flex flex-col items-center shrink-0 border p-2 rounded hover:bg-orange-50">
+                         <img src={SYSTEM_DICTIONARY[k].img} className="w-10 h-10 object-cover rounded mb-1"/>
+                         <span className="text-xs">{k}</span>
+                     </button>
+                 ))}
+             </div>
+         </div>
+      
          <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><h3 className="font-bold mb-2 flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3><textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词，逗号分隔 (如: apple, banana)"/><button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成</button></div>
          <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-slate-300">
            <h3 className="font-bold mb-4">手动添加任务</h3>
@@ -881,9 +933,35 @@ export default function App() {
   const handleForceSync = async () => {
     if(!session) return;
     if(confirm("确定要将当前设备的本地数据覆盖到云端吗？")) {
-       await CloudAPI.sync(session.uid, data, 'force'); // 强制云端同步
+       await CloudAPI.sync(session.uid, data, 'force');
        alert("已强制同步到云端！");
     }
+  };
+  
+  // 自动心跳同步 (5秒一次) + 提醒音效
+  useEffect(() => {
+    if (!session || session.mode !== 'cloud') return;
+    const interval = setInterval(async () => {
+       const cloudData = await CloudAPI.fetchData(session.uid);
+       if (cloudData?.user?.nudge && cloudData.user.nudge !== data?.user?.nudge) {
+           console.log("Nudge received!");
+           playSystemSound('nudge'); 
+           alert("🔔 家长发来提醒：快去完成任务吧！");
+       }
+       if (cloudData && JSON.stringify(cloudData.tasks) !== JSON.stringify(data.tasks)) {
+           console.log("Syncing new tasks...");
+           setData(prev => ({ ...prev, tasks: cloudData.tasks })); 
+           playSystemSound('patrol');
+       }
+    }, 5000); 
+    return () => clearInterval(interval);
+  }, [session, data]);
+
+  const handleNudgeKid = () => {
+     const newData = { ...data };
+     newData.user.nudge = Date.now();
+     persist(newData);
+     alert("已发送提醒！孩子设备将播放提示音。");
   };
 
   const handleComplete = (task) => {
@@ -891,6 +969,24 @@ export default function App() {
     const t = newData.tasks.find(x => x.id === task.id);
     if(t) { t.status = 'completed'; t.completedAt = Date.now(); }
     newData.user.coins += task.reward; newData.user.xp += task.reward;
+    
+    // 循环任务逻辑
+    if (task.cycleMode === 'daily' && task.libraryId) {
+       const libItem = newData.library.find(i => i.id === task.libraryId);
+       if (libItem) {
+          const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+          const originalHour = libItem.nextReview ? new Date(libItem.nextReview).getHours() : 19;
+          tomorrow.setHours(originalHour, 0, 0, 0);
+          libItem.nextReview = tomorrow.getTime();
+       }
+    } else if (task.libraryId) {
+        const item = newData.library.find(i => i.id === task.libraryId);
+        if (item) {
+           const lv = item.memoryLevel || 0; const nextLv = Math.min(lv + 1, 6);
+           const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + REVIEW_INTERVALS[nextLv]); nextDate.setHours(19,0,0,0);
+           item.memoryLevel = nextLv; item.nextReview = nextDate.getTime();
+        }
+    }
     persist(newData);
     setActiveFlashcardTask(null);
     setRewardData({ coins: task.reward, xp: task.reward });
@@ -900,10 +996,18 @@ export default function App() {
     setIsPatrolling(true); speak("雷达启动");
     setTimeout(() => {
       const newData = { ...data };
-      const candidate = newData.library.find(i => !newData.tasks.find(t=>t.libraryId===i.id && t.status==='pending'));
-      if(candidate) newData.tasks.push({...candidate, id: generateId(), status:'pending', createdAt: Date.now(), libraryId: candidate.id});
-      else { const w = enrichWordTask('random'); newData.tasks.push({id:generateId(), title:`练习:${w.word}`, type:'english', reward:15, flashcardData:w, status:'pending', createdAt:Date.now()}); }
-      persist(newData); setIsPatrolling(false); speak("发现任务");
+      const now = Date.now();
+      const candidate = newData.library.find(i => i.nextReview <= now && !newData.tasks.find(t=>t.libraryId===i.id && t.status==='pending'));
+      
+      if(candidate) {
+          newData.tasks.push({...candidate, id: generateId(), status:'pending', createdAt: Date.now(), libraryId: candidate.id});
+          speak("发现计划任务！");
+      } else { 
+          const w = enrichWordTask('random'); 
+          newData.tasks.push({id:generateId(), title:`练习:${w.word}`, type:'english', reward:15, flashcardData:w, status:'pending', createdAt:Date.now()}); 
+          speak("发现随机任务！");
+      }
+      persist(newData); setIsPatrolling(false);
     }, 2000);
   };
 
@@ -949,7 +1053,7 @@ export default function App() {
           onForceSync={handleForceSync}
           onLogout={handleLogout}
         />
-        {isParentMode && <ParentDashboard userProfile={data.user} tasks={data.tasks} libraryItems={data.library} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} onUpdateProfile={handleUpdateProfile} onManageLibrary={handleManageLibrary} onClose={() => setIsParentMode(false)} onDataChange={() => setData(LocalDB.get())} sessionUid={session.uid} onForceSync={handleForceSync} onPromoteTask={handlePromoteTask} />}
+        {isParentMode && <ParentDashboard userProfile={data.user} tasks={data.tasks} libraryItems={data.library} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} onUpdateProfile={handleUpdateProfile} onManageLibrary={handleManageLibrary} onClose={() => setIsParentMode(false)} onDataChange={() => setData(LocalDB.get())} sessionUid={session.uid} onForceSync={handleForceSync} onPromoteTask={handlePromoteTask} onNudgeKid={handleNudgeKid} />}
         {activeFlashcardTask && <FlashcardGame task={activeFlashcardTask} onClose={() => setActiveFlashcardTask(null)} onComplete={handleComplete} />}
         {rewardData && <RewardModal rewards={rewardData} onClose={() => setRewardData(null)} />}
         {showCollection && <CollectionModal collection={data.collection || {}} onClose={() => setShowCollection(false)} />}
