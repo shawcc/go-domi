@@ -30,8 +30,7 @@ const GlobalStyles = () => (
     .hazard-stripes { background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px); background-size: 50px 50px; }
     
     @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    @keyframes bounce-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-
+    
     @keyframes shooting-star {
       0% { transform: translateX(0) translateY(0) rotate(45deg); opacity: 1; }
       100% { transform: translateX(-500px) translateY(500px) rotate(45deg); opacity: 0; }
@@ -61,7 +60,7 @@ const getApiEndpoint = (path, forceDirect = false) => {
 
 const proxifyUrl = (url) => {
   if (!url) return '';
-  if (url.startsWith('data:') || url.startsWith('blob:')) return url; // 支持 Base64 和 Blob 预览
+  if (url.startsWith('data:') || url.startsWith('blob:')) return url; 
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) return url;
   if (url.includes(BACKEND_HOST)) {
     try { return new URL(url).pathname; } catch (e) { return url; }
@@ -449,9 +448,11 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
 const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, toggleParentMode, processingTasks, hiddenTaskIds, onStartPatrol, isPatrolling, isPlaying, onOpenCollection, connectionMode, onForceSync, onLogout }) => {
   const themeId = userProfile.theme || 'cosmic';
   const currentTheme = THEMES[themeId] || THEMES.cosmic;
+  
   const mascotImg = proxifyUrl(userProfile.themeConfig?.mascot || currentTheme.mascot);
   const bgImg = proxifyUrl(userProfile.themeConfig?.background || currentTheme.backgroundImage);
   const progressPercent = Math.min((userProfile.xp / (userProfile.level*100)) * 100, 100);
+
   const headerBgClass = themeId === 'pokemon' ? 'bg-white/60 text-slate-800' : 'bg-black/20 text-white';
 
   return (
@@ -463,8 +464,7 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
       <div className={`w-full p-4 flex justify-between items-center backdrop-blur-md z-10 ${headerBgClass}`}>
          <div className="flex items-center gap-3">
             <button onClick={onLogout} className="opacity-50 hover:opacity-100"><LogOut size={16}/></button>
-            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/50 bg-white"><img src={mascotImg} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none'}}/></div>
-            <div><div className="font-bold leading-tight">多米队长</div><div className="text-xs opacity-70 font-mono">Lv.{userProfile.level}</div></div>
+            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/50 bg-white"><img src={mascotImg} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none';e.target.nextSibling.style.display='block'}}/><Rocket className="text-yellow-400 hidden" size={32}/></div><div><div className="font-bold leading-tight">多米队长</div><div className="text-xs opacity-70 font-mono">Lv.{userProfile.level}</div></div>
          </div>
          <div className="flex gap-2">
             <div className="flex items-center gap-1 bg-black/10 px-3 py-1 rounded-full border border-black/5"><Zap size={14} className="text-yellow-500 fill-yellow-500"/><span className="font-bold">{userProfile.coins}</span></div>
@@ -636,6 +636,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const handleAddToLibrary = (e) => { e.preventDefault(); onManageLibrary('add', { ...constructTaskData(), memoryLevel: 0, nextReview: Date.now() }); alert('已入库'); refresh(); };
     const handleBatchAddWords = () => { if (!batchWords.trim()) return; const words = batchWords.split(/[,，\n]/).map(w => w.trim()).filter(w => w); let count = 0; words.forEach(word => { const enrichedData = enrichWordTask(word); onManageLibrary('add', { title: `练习单词: ${enrichedData.word}`, type: 'english', reward: 20, flashcardData: enrichedData, memoryLevel: 0, nextReview: Date.now(), cycleMode: 'ebbinghaus' }); count++; }); alert(`成功生成 ${count} 个！`); setBatchWords(''); refresh(); };
     const handleSaveConfig = () => { 
+        // 关键：保存时把 levelStages 一起存进去
         onUpdateProfile({ 
             taskProbabilities, 
             pushStartHour: parseInt(pushStart), 
@@ -739,8 +740,14 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
                         onChange={(e) => updateStage(idx, 'name', e.target.value)}
                         placeholder="阶段名称"
                     />
-                    {/* 图片上传 */}
-                    <div className="relative">
+                    {/* 图片配置行：输入框 + 上传按钮 */}
+                    <div className="relative flex items-center gap-1">
+                        <input 
+                            className="w-20 border p-1 rounded text-[10px] text-slate-500" 
+                            value={stage.image || ''}
+                            onChange={(e) => updateStage(idx, 'image', e.target.value)}
+                            placeholder="图片URL"
+                        />
                         <button className={`p-1 rounded hover:bg-slate-200 ${stage.image ? 'bg-green-100 text-green-600' : 'bg-slate-100'}`} onClick={() => stageInputRefs.current[idx].click()}>
                            <Upload size={14}/>
                         </button>
@@ -750,6 +757,8 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
                             ref={el => stageInputRefs.current[idx] = el} 
                             onChange={(e) => handleUpload(e, 'stage', idx)}
                         />
+                         {/* 缩略图预览 */}
+                        {stage.image && <img src={proxifyUrl(stage.image)} className="w-6 h-6 object-cover rounded border" alt="preview"/>}
                     </div>
                     {/* 删除按钮 */}
                     {idx > 0 && <button onClick={() => removeStage(idx)} className="text-red-400"><MinusCircle size={14}/></button>}
@@ -792,9 +801,35 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
     const imageUrl = proxifyUrl(task.flashcardData?.image);
     useEffect(() => { if(step==='learning') setTimeout(()=>playTaskAudio(word, task.flashcardData?.audio), 500); }, [step]);
     const checkMath = () => { if(parseInt(mathAns)===mathQ.a*mathQ.b){ setStep('success'); speak("太棒了！"); setTimeout(()=>onComplete(task),2000); } else alert("算错啦"); };
-    const generateMath = () => { const a = Math.floor(Math.random() * 7) + 3; const b = Math.floor(Math.random() * 7) + 3; setMathQ({ a, b }); setMathAns(''); };
-    const handleGoTeach = () => { setStep('challenge'); generateMath(); };
-    return (<div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4"><div className="bg-white text-slate-900 w-full max-w-md landscape:max-w-4xl rounded-3xl overflow-hidden shadow-2xl relative flex flex-col"><button onClick={onClose} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full z-10"><XCircle /></button><div className="w-full h-64 bg-slate-100 flex items-center justify-center overflow-hidden"><img src={imageUrl} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none'}}/></div><div className="p-8 text-center flex-1 overflow-y-auto">{step==='success' ? <div className="py-8"><Trophy size={80} className="mx-auto text-yellow-400"/><h2 className="text-3xl font-bold">挑战成功</h2></div> : <><h1 className="text-6xl font-bold text-blue-600 mb-4">{word}</h1><button onClick={()=>playTaskAudio(word, task.flashcardData?.audio)} className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full mb-8"><Headphones size={20}/> 听发音</button>{step==='learning' ? <button onClick={handleGoTeach} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-xl">教爷爷奶奶</button> : <div className="bg-slate-50 p-4 rounded-xl"><div className="flex justify-between items-center mb-2"><span className="text-xl font-mono font-bold">{mathQ.a} x {mathQ.b} = ?</span><input type="number" className="w-20 border rounded p-2 text-center" value={mathAns} onChange={e=>setMathAns(e.target.value)}/></div><button onClick={checkMath} className="w-full bg-green-500 text-white py-2 rounded font-bold">家长确认</button></div>}</>}</div></div></div>);
+    
+    // 生成乘法题
+    const generateMath = () => {
+      const a = Math.floor(Math.random() * 7) + 3; 
+      const b = Math.floor(Math.random() * 7) + 3;
+      setMathQ({ a, b });
+      setMathAns('');
+    };
+
+    const handleGoTeach = () => {
+       setStep('challenge');
+       generateMath();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4">
+        <div className="bg-white text-slate-900 w-full max-w-md landscape:max-w-4xl rounded-3xl overflow-hidden shadow-2xl relative flex flex-col landscape:flex-row max-h-[90vh]">
+            <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full z-10"><XCircle /></button>
+            <div className="w-full h-64 landscape:w-1/2 landscape:h-full bg-slate-100 flex items-center justify-center overflow-hidden"><img src={imageUrl} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none'}}/></div>
+            <div className="p-8 text-center flex-1 overflow-y-auto landscape:w-1/2 landscape:flex landscape:flex-col landscape:justify-center">
+            {step==='success' ? <div className="py-8"><Trophy size={80} className="mx-auto text-yellow-400"/><h2 className="text-3xl font-bold">挑战成功</h2></div> : <>
+                <h1 className="text-6xl font-bold text-blue-600 mb-4">{word}</h1>
+                <button onClick={()=>playTaskAudio(word, task.flashcardData?.audio)} className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full mb-8"><Headphones size={20}/> 听发音</button>
+                {step==='learning' ? <button onClick={handleGoTeach} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-xl">教爷爷奶奶</button> : <div className="bg-slate-50 p-4 rounded-xl"><div className="flex justify-between items-center mb-2"><span className="text-xl font-mono font-bold">{mathQ.a} x {mathQ.b} = ?</span><input type="number" className="w-20 border rounded p-2 text-center" value={mathAns} onChange={e=>setMathAns(e.target.value)}/></div><button onClick={checkMath} className="w-full bg-green-500 text-white py-2 rounded font-bold">家长确认</button></div>}
+            </>}
+            </div>
+        </div>
+        </div>
+    );
 };
 
 const RewardModal = ({ rewards, onClose }) => (<div onClick={onClose} className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/95"><div className="bg-slate-800 border-4 border-yellow-400 p-8 rounded-3xl text-center"><h2 className="text-3xl text-white font-black mb-4">任务完成!</h2><div className="text-yellow-400 text-xl font-bold mb-8">+{rewards.coins} 能量石</div><button className="bg-yellow-500 w-full py-4 rounded-xl font-bold">开心收下</button></div></div>);
