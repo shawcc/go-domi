@@ -30,7 +30,8 @@ const GlobalStyles = () => (
     .hazard-stripes { background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px); background-size: 50px 50px; }
     
     @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    
+    @keyframes bounce-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
     @keyframes shooting-star {
       0% { transform: translateX(0) translateY(0) rotate(45deg); opacity: 1; }
       100% { transform: translateX(-500px) translateY(500px) rotate(45deg); opacity: 0; }
@@ -58,12 +59,20 @@ const getApiEndpoint = (path, forceDirect = false) => {
   return path;
 };
 
+// 增强版 URL 处理：确保返回安全路径
 const proxifyUrl = (url) => {
   if (!url) return '';
-  if (url.startsWith('data:') || url.startsWith('blob:')) return url; 
+  if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('/')) return url; 
+  
+  // 本地调试模式：允许 HTTP 直连
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) return url;
+  
+  // 线上生产模式：如果包含后端 Host，强制转为相对路径
   if (url.includes(BACKEND_HOST)) {
-    try { return new URL(url).pathname; } catch (e) { return url; }
+    try { 
+        // 提取 /uploads/xxx.jpg
+        return new URL(url).pathname; 
+    } catch (e) { return url; }
   }
   return url;
 };
@@ -220,12 +229,27 @@ const CloudAPI = {
       try { await fetch(getApiEndpoint('/api/sync'), { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username, data }) }); } catch (e) { console.error("Sync failed", e); }
     }
   },
+  // 💎 核心升级：上传后直接返回相对路径
   upload: async (file) => {
+    const endpoint = getApiEndpoint('/api/upload');
     try {
-      const formData = new FormData(); formData.append('file', file);
-      const res = await fetch(getApiEndpoint('/api/upload'), { method: 'POST', body: formData });
-      if (res.ok) { const result = await res.json(); return result.url; }
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(endpoint, { method: 'POST', body: formData });
+      if (res.ok) { 
+          const result = await res.json(); 
+          // result.url 是 http://IP/uploads/xxx.jpg
+          // 立即转换为 /uploads/xxx.jpg，确保安全加载
+          try {
+             const urlObj = new URL(result.url);
+             return urlObj.pathname;
+          } catch(e) {
+             return result.url;
+          }
+      }
     } catch (e) { console.warn("Upload failed", e); }
+    
+    // Fallback: Base64
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => resolve(e.target.result);
@@ -293,7 +317,11 @@ const getScheduledTimeDisplay = (pushStart, itemNextReview) => {
    if (itemNextReview > now) {
       return new Date(itemNextReview).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
    }
-   return "✅ 队列中 (随时可发)";
+   if (now < todayPushStart.getTime()) {
+      return "今天 " + pushStart + ":00 (待调度)"; 
+   } else {
+      return "队列中 (随时)";
+   }
 };
 
 const getNextBeijingScheduleTime = (startHour = 19) => { const t = getBeijingTime(); t.setHours(startHour - 8,0,0,0); if(Date.now() >= t.getTime()) t.setDate(t.getDate()+1); return t.getTime(); };
@@ -490,7 +518,7 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
 };
 
 const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose, onDeleteTask, onUpdateProfile, onManageLibrary, onDataChange, sessionUid, onForceSync, onPromoteTask, onNudgeKid }) => {
-    const [activeTab, setActiveTab] = useState('plan'); 
+    const [activeTab, setActiveTab] = useState('library'); 
     const [saveStatus, setSaveStatus] = useState(''); 
     
     // Config states
