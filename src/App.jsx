@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
+// 🛡️ 核心修复：补全所有 JSX 中用到的图标，防止 Undefined 报错
 import { 
-  Trophy, Settings, Plus, CheckCircle, XCircle, Volume2, Gamepad2, 
-  Rocket, Zap, Loader2, Activity, BrainCircuit, History, ListTodo, 
-  Clock, Gem, Hexagon, Octagon, Triangle, 
-  Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
-  Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
-  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe, Info, Play, RotateCw, Bell, Layers, Edit3, PlusCircle, MinusCircle, Book, X, FileText
+  Rocket, User, X, Zap, Loader2, 
+  Star, Siren, Trash2, Radar, Headphones, 
+  Wand2, Puzzle, BookOpen, Sliders, LogOut, Cloud, RefreshCw, 
+  Palette, Upload, Server, AlertTriangle, Bell, Settings,
+  Plus, Minus, Book, Volume2, Trophy, Check
 } from 'lucide-react';
 
 // ==========================================
 // --- 0. 基础配置 ---
 // ==========================================
 
-// ⚠️ 生产环境配置: 
 const SERVER_IP = 'http://43.143.74.76:3000'; 
 const BACKEND_HOST = '43.143.74.76:3000';
 
@@ -50,11 +49,9 @@ const GlobalStyles = () => (
   `}</style>
 );
 
-// --- 核心工具：智能 URL 处理 ---
+// --- 核心工具 ---
 const getApiEndpoint = (path, forceDirect = false) => {
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-     return SERVER_IP ? `${SERVER_IP}${path}` : path;
-  }
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) return SERVER_IP ? `${SERVER_IP}${path}` : path;
   if (forceDirect) return `${SERVER_IP}${path}`;
   return path;
 };
@@ -63,9 +60,7 @@ const proxifyUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('/')) return url; 
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) return url;
-  if (url.includes(BACKEND_HOST)) {
-    try { return new URL(url).pathname; } catch (e) { return url; }
-  }
+  if (url.includes(BACKEND_HOST)) { try { return new URL(url).pathname; } catch (e) { return url; } }
   return url;
 };
 
@@ -74,7 +69,7 @@ const proxifyUrl = (url) => {
 // ==========================================
 const LoadingScreen = () => (
   <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center text-white p-4 z-[100]">
-    <div className="animate-bounce text-6xl mb-4">🚀</div>
+    <div className="animate-spin text-6xl mb-4"><RefreshCw /></div>
     <h1 className="text-2xl font-bold animate-pulse">正在连接宇宙基地...</h1>
     <p className="text-slate-400 mt-2">系统初始化中</p>
   </div>
@@ -105,10 +100,10 @@ const STORAGE_KEY = 'go_domi_data_v24_mega_library';
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
 const CRYSTAL_STAGES = [
-  { minLevel: 1, name: '原初晶核', icon: Hexagon, color: 'text-blue-300', scale: 1, message: "能量..." },
-  { minLevel: 3, name: '觉醒晶簇', icon: Triangle, color: 'text-purple-400', scale: 1.2, message: "苏醒..." },
-  { minLevel: 6, name: '辉光棱镜', icon: Octagon, color: 'text-pink-400', scale: 1.4, message: "充能！" },
-  { minLevel: 9, name: '永恒之心', icon: Gem, color: 'text-yellow-300', scale: 1.6, message: "无敌！" },
+  { minLevel: 1, name: '原初晶核', icon: Star, color: 'text-blue-300', scale: 1, message: "能量..." },
+  { minLevel: 3, name: '觉醒晶簇', icon: Star, color: 'text-purple-400', scale: 1.2, message: "苏醒..." },
+  { minLevel: 6, name: '辉光棱镜', icon: Star, color: 'text-pink-400', scale: 1.4, message: "充能！" },
+  { minLevel: 9, name: '永恒之心', icon: Star, color: 'text-yellow-300', scale: 1.6, message: "无敌！" },
 ];
 
 const DEFAULT_USER_DATA = {
@@ -147,47 +142,19 @@ const sanitizeData = (incomingData) => {
 };
 
 const LocalDB = {
-  get: () => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return sanitizeData(raw ? JSON.parse(raw) : null);
-    } catch { return DEFAULT_USER_DATA; }
-  },
-  save: (data) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    window.dispatchEvent(new Event('local-db-change'));
-  },
-  restore: (fullData) => {
-    if (!fullData || !fullData.user) { alert("无效的存档文件"); return; }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(fullData));
-    window.dispatchEvent(new Event('local-db-change'));
-    window.location.reload(); 
-  },
-  export: () => {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) return alert("没有本地数据");
-    const blob = new Blob([data], {type: 'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `domi_backup.json`; a.click();
-  },
-  clear: () => {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem('go_domi_session');
-  }
+  get: () => { try { const raw = localStorage.getItem(STORAGE_KEY); return sanitizeData(raw ? JSON.parse(raw) : null); } catch { return DEFAULT_USER_DATA; } },
+  save: (data) => { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); window.dispatchEvent(new Event('local-db-change')); },
+  restore: (fullData) => { if (!fullData || !fullData.user) { alert("无效的存档文件"); return; } localStorage.setItem(STORAGE_KEY, JSON.stringify(fullData)); window.dispatchEvent(new Event('local-db-change')); window.location.reload(); },
+  export: () => { const data = localStorage.getItem(STORAGE_KEY); if (!data) return alert("没有本地数据"); const blob = new Blob([data], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `domi_backup.json`; a.click(); },
+  clear: () => { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem('go_domi_session'); }
 };
 
 const CloudAPI = {
   login: async (username, forceDirect = false) => {
     const endpoint = getApiEndpoint('/api/login', forceDirect);
     try {
-      const controller = new AbortController();
-      setTimeout(() => controller.abort(), 8000); 
-      const res = await fetch(endpoint, {
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }), 
-        signal: controller.signal
-      });
+      const controller = new AbortController(); setTimeout(() => controller.abort(), 8000); 
+      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username }), signal: controller.signal });
       if (res.ok) {
         const result = await res.json();
         return { uid: username, token: result.token, initialData: sanitizeData(result.data), mode: 'cloud' };
@@ -203,23 +170,13 @@ const CloudAPI = {
   },
   fetchData: async (username) => {
      try {
-       const res = await fetch(getApiEndpoint('/api/login'), {
-         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username })
-       });
-       if (res.ok) {
-          const result = await res.json();
-          const safeData = sanitizeData(result.data);
-          LocalDB.save(safeData); 
-          return safeData;
-       }
-     } catch (e) {}
-     return null;
+       const res = await fetch(getApiEndpoint('/api/login'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username }) });
+       if (res.ok) { const result = await res.json(); const safeData = sanitizeData(result.data); LocalDB.save(safeData); return safeData; }
+     } catch (e) {} return null;
   },
   sync: async (username, data, mode) => {
     LocalDB.save(data);
-    if (mode === 'cloud' || mode === 'force') {
-      try { await fetch(getApiEndpoint('/api/sync'), { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username, data }) }); } catch (e) { console.error("Sync failed", e); }
-    }
+    if (mode === 'cloud' || mode === 'force') { try { await fetch(getApiEndpoint('/api/sync'), { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username, data }) }); } catch (e) { console.error("Sync failed", e); } }
   },
   upload: async (file) => {
     try {
@@ -227,11 +184,7 @@ const CloudAPI = {
       const res = await fetch(getApiEndpoint('/api/upload'), { method: 'POST', body: formData });
       if (res.ok) { const result = await res.json(); return result.url; }
     } catch (e) { console.warn("Upload failed", e); }
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
-      reader.readAsDataURL(file);
-    });
+    return new Promise((resolve) => { const reader = new FileReader(); reader.onload = (e) => resolve(e.target.result); reader.readAsDataURL(file); });
   }
 };
 
@@ -240,7 +193,7 @@ const CloudAPI = {
 // ==========================================
 const PUZZLE_CONFIG = { totalPieces: 9, image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80" };
 
-// 🌟 精选词库：稳定的 Unsplash 图片链接
+// 🌟 精品词库 (Unsplash)
 const SYSTEM_DICTIONARY = {
   'cat': { cn: '猫', img: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&q=80' },
   'dog': { cn: '狗', img: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80' },
@@ -261,12 +214,9 @@ const SYSTEM_DICTIONARY = {
   'hand': { cn: '手', img: 'https://images.unsplash.com/photo-1466695108335-44674aa2058b?w=400&q=80' },
 };
 
-// 🌟 海量预置词库 + 智能图片生成器 (Seed保证一致性)
 const getImgUrl = (keyword) => {
     let hash = 0;
-    for (let i = 0; i < keyword.length; i++) {
-        hash = keyword.charCodeAt(i) + ((hash << 5) - hash);
-    }
+    for (let i = 0; i < keyword.length; i++) { hash = keyword.charCodeAt(i) + ((hash << 5) - hash); }
     const seed = Math.abs(hash);
     return `https://image.pollinations.ai/prompt/cute cartoon ${keyword} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${seed}`;
 };
@@ -274,18 +224,9 @@ const getImgUrl = (keyword) => {
 const enrichWordTask = (wordInput) => {
   const word = wordInput.trim();
   const lowerWord = word.toLowerCase();
-  
-  // 1. 查找精品库
   if (SYSTEM_DICTIONARY[lowerWord]) {
-      return { 
-          word, 
-          translation: SYSTEM_DICTIONARY[lowerWord].cn, 
-          image: SYSTEM_DICTIONARY[lowerWord].img, 
-          audio: '' 
-      };
+      return { word, translation: SYSTEM_DICTIONARY[lowerWord].cn, image: SYSTEM_DICTIONARY[lowerWord].img, audio: '' };
   }
-
-  // 2. 自动生成图片 (带缓存Seed)
   const imageUrl = getImgUrl(word);
   return { word, translation: '', image: imageUrl, audio: '' };
 };
@@ -313,7 +254,7 @@ const POKEMON_STAGES = [
   { minLevel: 12, name: '超级大针蜂', image: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/10090.png', scale: 1.4, message: "嗡嗡嗡！" } 
 ];
 
-const STAGE_ICONS = [Hexagon, Triangle, Octagon, Gem];
+const STAGE_ICONS = [Star, Star, Star, Star];
 const REVIEW_INTERVALS = [0, 1, 2, 4, 7, 15, 30]; 
 const MAX_DAILY_TASKS = 10; 
 
@@ -323,8 +264,6 @@ const isBeijingActiveWindow = (start, end) => { const h = getBeijingTime().getHo
 
 const getScheduledTimeDisplay = (pushStart, itemNextReview) => {
    const now = Date.now();
-   const todayPushStart = new Date();
-   todayPushStart.setHours(pushStart, 0, 0, 0);
    if (!itemNextReview) return "未计划";
    if (itemNextReview > now) {
       return new Date(itemNextReview).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
@@ -353,6 +292,7 @@ const speak = (text, lang = 'zh-CN') => {
   const bestVoice = voices.find(v => v.lang.includes(lang.replace('_', '-')) && (v.name.includes('Google') || v.name.includes('Microsoft'))) || voices.find(v => v.lang.includes(lang.replace('_', '-')));
   if(bestVoice) u.voice = bestVoice;
   
+  u.onerror = (e) => console.error("TTS Error:", e);
   window.speechSynthesis.speak(u);
 };
 
@@ -395,12 +335,88 @@ const LoginScreen = ({ onLogin }) => {
       <div className="relative z-10 w-full max-w-sm bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V24.0 (Anki导入)</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V24.4 (Stable)</p>
         {SERVER_IP && (<div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between"><span className="flex gap-2"><Server size={14}/> {SERVER_IP}</span><button onClick={()=>setUseDirect(!useDirect)} className={`text-[10px] px-1 rounded ${useDirect?'bg-red-500 text-white':'text-slate-500'}`}>{useDirect ? '强制直连' : '代理模式'}</button></div>)}
-        <form onSubmit={handleSubmit} className="space-y-4"><div className="relative"><User className="absolute left-3 top-3.5 text-slate-400" size={20} /><input type="text" className="w-full bg-slate-900/50 border border-slate-600 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-400" placeholder="特工代号" value={username} onChange={e => setUsername(e.target.value)} /></div><button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2">{loading ? <Loader2 className="animate-spin"/> : "连接基地"}</button></form>
+        <form onSubmit={handleSubmit} className="space-y-4"><div className="relative"><User className="absolute left-3 top-3.5 text-slate-400" size={20} /><input type="text" className="w-full bg-slate-900/50 border border-slate-600 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-400" placeholder="特工代号" value={username} onChange={e => setUsername(e.target.value)} /></div><button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2">{loading ? <RefreshCw className="animate-spin"/> : "连接基地"}</button></form>
         {errorMsg && <div className="mt-4 p-3 bg-red-900/50 border border-red-500/50 rounded-xl text-red-200 text-xs flex items-start gap-2"><AlertTriangle size={16} className="shrink-0 mt-0.5" /><span>{errorMsg}</span></div>}
         <div className="mt-6 text-center text-xs text-slate-500"><button onClick={LocalDB.export} className="text-blue-400 hover:underline">导出本地数据备份</button></div>
       </div>
+    </div>
+  );
+};
+
+const TTSDebugger = ({ onClose }) => {
+  const [voices, setVoices] = useState([]);
+  const [text, setText] = useState('Hello, little explorer!');
+  const [log, setLog] = useState([]);
+  const [selectedVoice, setSelectedVoice] = useState('');
+
+  useEffect(() => {
+    const updateVoices = () => {
+      const vs = window.speechSynthesis.getVoices();
+      setVoices(vs);
+      if (vs.length > 0 && !selectedVoice) {
+         const defaultVoice = vs.find(v => v.name.includes('Google US')) || vs.find(v => v.lang.includes('en-US')) || vs[0];
+         setSelectedVoice(defaultVoice.name);
+      }
+    };
+    updateVoices();
+    window.speechSynthesis.onvoiceschanged = updateVoices;
+  }, []);
+
+  const addLog = (msg) => setLog(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
+
+  const handleSpeak = () => {
+    if (!window.speechSynthesis) {
+        addLog("Fatal: Browser does not support speech synthesis");
+        return;
+    }
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const voice = voices.find(v => v.name === selectedVoice);
+    if (voice) {
+        u.voice = voice;
+        u.lang = voice.lang;
+    }
+    u.rate = 0.8;
+    
+    u.onstart = () => addLog("Event: Started speaking");
+    u.onend = () => addLog("Event: Finished speaking");
+    u.onerror = (e) => addLog(`Event: Error - ${e.error}`);
+    
+    window.speechSynthesis.speak(u);
+    addLog(`Command: Speak "${text}" using ${voice ? voice.name : 'default'}`);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+        <div className="bg-white w-full max-w-md rounded-xl p-4 shadow-xl flex flex-col max-h-[80vh]">
+            <div className="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 className="font-bold flex items-center gap-2"><Zap size={20}/> TTS 调试器</h3>
+                <button onClick={onClose}><X size={20}/></button>
+            </div>
+            
+            <div className="space-y-3 overflow-y-auto flex-1">
+                <div className="bg-blue-50 p-2 rounded text-xs text-blue-700 mb-2">
+                    如果没声音：1. 检查手机静音键 2. 确保选择了包含 "US" 或 "English" 的语音 3. 尝试其他语音包
+                </div>
+                <div>
+                    <label className="text-xs font-bold block mb-1">选择语音 ({voices.length})</label>
+                    <select className="w-full border p-2 rounded text-xs" value={selectedVoice} onChange={e=>setSelectedVoice(e.target.value)}>
+                        {voices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="text-xs font-bold block mb-1">测试文本</label>
+                    <input className="w-full border p-2 rounded" value={text} onChange={e=>setText(e.target.value)} />
+                </div>
+                <button onClick={handleSpeak} className="w-full bg-blue-600 text-white py-2 rounded font-bold">播放测试</button>
+                
+                <div className="bg-slate-900 text-green-400 p-2 rounded h-40 overflow-y-auto text-xs font-mono">
+                    {log.length === 0 ? <span className="opacity-50">等待操作...</span> : log.map((l, i) => <div key={i}>{l}</div>)}
+                </div>
+            </div>
+        </div>
     </div>
   );
 };
@@ -426,7 +442,7 @@ const MainCharacter = ({ themeId, level, onClick, userProfile }) => {
   const currentStage = [...stages].reverse().find(s => level >= s.minLevel) || stages[0];
   const stageIndex = stages.indexOf(currentStage);
   
-  const Icon = STAGE_ICONS[stageIndex % STAGE_ICONS.length] || Hexagon;
+  const Icon = Star;
   const stageImage = currentStage.image ? proxifyUrl(currentStage.image) : null;
 
   return (
@@ -466,7 +482,7 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
           <div className={`${currentTheme.primary} text-white p-3 flex items-center justify-center gap-2 animate-pulse`}><Siren size={20} /> <h2 className="text-lg font-black">紧急任务</h2></div>
           <div className="p-6 flex flex-col items-center text-center">
             <div className="mb-4 w-48 h-48 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-slate-200 shadow-inner relative">
-                {!imgLoaded && taskImage && <div className="absolute inset-0 flex items-center justify-center bg-slate-200"><Loader2 className="animate-spin text-slate-400"/></div>}
+                {!imgLoaded && taskImage && <div className="absolute inset-0 flex items-center justify-center bg-slate-200"><RefreshCw className="animate-spin text-slate-400"/></div>}
                 {taskImage ? <img src={taskImage} className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onLoad={() => setImgLoaded(true)} onError={(e)=>{e.target.style.display='none'; setImgLoaded(true);}} /> : <div className="text-6xl animate-bounce">{isEnglish?"A":"⚔️"}</div>}
             </div>
             
@@ -479,7 +495,7 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
             <div className="space-y-1 mb-6">
                <div className="text-xs font-bold uppercase opacity-60">来自 {assistantName} 的信号</div>
                <h1 className={`text-2xl font-black ${currentTheme.text === 'text-slate-100' ? 'text-white' : 'text-slate-800'}`}>{task.title}</h1>
-               <div className="inline-flex items-center gap-1 bg-yellow-400/20 text-yellow-600 px-3 py-0.5 rounded-full mt-2 font-bold text-sm"><Zap size={14} fill="currentColor"/> +{task.reward}</div>
+               <div className="inline-flex items-center gap-1 bg-yellow-400/20 text-yellow-600 px-3 py-0.5 rounded-full mt-2 font-bold text-sm"><Star size={14} fill="currentColor"/> +{task.reward}</div>
             </div>
             <div className="w-full">
               {isEnglish ? <button onClick={()=>onPlayFlashcard(task)} disabled={isProcessing} className={`w-full ${currentTheme.primary} text-white py-3 rounded-xl font-bold text-lg shadow-lg active:scale-95`}>开始挑战</button> : <button onClick={()=>onCompleteTask(task)} disabled={isProcessing} className={`w-full ${currentTheme.primary} text-white py-3 rounded-xl font-bold text-lg shadow-lg active:scale-95`}>确认完成</button>}
@@ -506,10 +522,10 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
       <div className={`w-full p-4 flex justify-between items-center backdrop-blur-md z-10 ${headerBgClass}`}>
          <div className="flex items-center gap-3">
             <button onClick={onLogout} className="opacity-50 hover:opacity-100"><LogOut size={16}/></button>
-            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/50 bg-white"><img src={mascotImg} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none';e.target.nextSibling.style.display='block'}}/><Rocket className="text-yellow-400 hidden" size={32}/></div><div><div className="font-bold leading-tight">多米队长</div><div className="text-xs opacity-70 font-mono">Lv.{userProfile.level}</div></div>
+            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/50 bg-white"><img src={mascotImg} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none';e.target.nextSibling.style.display='block'}}/><Star className="text-yellow-400 hidden" size={32}/></div><div><div className="font-bold leading-tight">多米队长</div><div className="text-xs opacity-70 font-mono">Lv.{userProfile.level}</div></div>
          </div>
          <div className="flex gap-2">
-            <div className="flex items-center gap-1 bg-black/10 px-3 py-1 rounded-full border border-black/5"><Zap size={14} className="text-yellow-500 fill-yellow-500"/><span className="font-bold">{userProfile.coins}</span></div>
+            <div className="flex items-center gap-1 bg-black/10 px-3 py-1 rounded-full border border-black/5"><Star size={14} className="text-yellow-500 fill-yellow-500"/><span className="font-bold">{userProfile.coins}</span></div>
             <button onClick={toggleParentMode} className="p-1"><Settings size={20}/></button>
          </div>
       </div>
@@ -532,8 +548,6 @@ const LibraryItemEditor = ({ item, onSave, onCancel }) => {
     const [word, setWord] = useState(item.flashcardData?.word || '');
     const [trans, setTrans] = useState(item.flashcardData?.translation || '');
     const [imgUrl, setImgUrl] = useState(item.image || item.flashcardData?.image || '');
-    
-    // 预览图逻辑
     const previewUrl = proxifyUrl(imgUrl);
     
     const handleSave = () => {
@@ -564,14 +578,11 @@ const LibraryItemEditor = ({ item, onSave, onCancel }) => {
                             <input className="w-full border p-2 rounded text-sm" value={title} onChange={e=>setTitle(e.target.value)} placeholder="任务标题" />
                         </div>
                     </div>
-                    
                     {word && <input className="w-full border p-2 rounded text-sm" value={trans} onChange={e=>setTrans(e.target.value)} placeholder="中文释义" />}
-                    
                     <div>
                         <label className="text-xs text-slate-500 block mb-1">图片链接 (URL)</label>
                         <input className="w-full border p-2 rounded text-xs font-mono" value={imgUrl} onChange={e=>setImgUrl(e.target.value)} placeholder="粘贴图片地址..." />
                     </div>
-
                     <div className="flex gap-2 pt-2">
                         {word && <button onClick={()=>speak(word, 'en-US')} className="flex-1 bg-blue-100 text-blue-700 py-2 rounded font-bold text-sm flex items-center justify-center gap-1"><Volume2 size={14}/> 试听发音</button>}
                         <button onClick={handleSave} className="flex-1 bg-green-600 text-white py-2 rounded font-bold text-sm">保存修改</button>
@@ -586,7 +597,8 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const [activeTab, setActiveTab] = useState('library'); 
     const [saveStatus, setSaveStatus] = useState(''); 
     const [editingItem, setEditingItem] = useState(null); 
-    const [importInputRef] = useState(useRef(null)); // Ref for file input
+    const [importInputRef] = useState(useRef(null)); 
+    const [showDebug, setShowDebug] = useState(false); 
 
     // Config states
     const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
@@ -633,7 +645,6 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
 
     const refresh = () => { if(onDataChange) onDataChange(); };
 
-    // Update state when profile changes (e.g. cloud sync)
     useEffect(() => {
         if(userProfile) {
             setPushStart(userProfile.pushStartHour || 19);
@@ -704,7 +715,6 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
         setLevelStages(newStages);
     };
     
-    // CSV Import Logic
     const handleImportCSV = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -713,35 +723,22 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
             const text = ev.target.result;
             const lines = text.split(/\r?\n/);
             let count = 0;
-            
             lines.forEach(line => {
                 const parts = line.split(/[,;\t]/).map(p => p.trim()).filter(p => p);
                 if (parts.length > 0) {
                     const word = parts[0];
                     const translation = parts.length > 1 ? parts[1] : '';
-                    
-                    // Simple validation: ignore if it looks like a header or empty
                     if (word && word.length > 1 && word.toLowerCase() !== 'word') {
                         const enrichedData = enrichWordTask(word);
-                        // If CSV provides translation, override system one
                         if (translation) enrichedData.translation = translation;
-                        
-                        onManageLibrary('add', { 
-                            title: `练习单词: ${enrichedData.word}`, 
-                            type: 'english', 
-                            reward: 20, 
-                            flashcardData: enrichedData, 
-                            memoryLevel: 0, 
-                            nextReview: Date.now(), 
-                            cycleMode: 'ebbinghaus' 
-                        });
+                        onManageLibrary('add', { title: `练习单词: ${enrichedData.word}`, type: 'english', reward: 20, flashcardData: enrichedData, memoryLevel: 0, nextReview: Date.now(), cycleMode: 'ebbinghaus' });
                         count++;
                     }
                 }
             });
             alert(`成功导入 ${count} 个单词！`);
             refresh();
-            e.target.value = ''; // Reset input
+            e.target.value = ''; 
         };
         reader.readAsText(file);
     };
@@ -778,11 +775,14 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const safeProbs = taskProbabilities || { english: 50, sport: 30, life: 20 };
 
     return (<div className="fixed inset-0 bg-slate-100 z-50 p-4 overflow-y-auto">
-      <div className="flex justify-between mb-4"><h2 className="font-bold text-slate-800">家长后台</h2><button onClick={onClose}><XCircle/></button></div>
+      <div className="flex justify-between mb-4"><h2 className="font-bold text-slate-800">家长后台</h2><button onClick={onClose}><X size={24}/></button></div>
       <div className="flex gap-2 mb-4 overflow-x-auto">{['plan','library','monitor','theme','config'].map(t=><button key={t} onClick={()=>setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold capitalize whitespace-nowrap ${activeTab===t?'bg-blue-600 text-white':'bg-white text-slate-600'}`}>{t}</button>)}</div>
       
       {/* ✏️ 任务库编辑弹窗 */}
       {editingItem && <LibraryItemEditor item={editingItem} onCancel={()=>setEditingItem(null)} onSave={(updated)=>{onManageLibrary('update', updated); setEditingItem(null); refresh();}} />}
+      
+      {/* 🛠️ TTS 调试器 */}
+      {showDebug && <TTSDebugger onClose={()=>setShowDebug(false)} />}
 
       {activeTab==='plan' && <div className="bg-white p-4 rounded shadow">
          <h3 className="font-bold mb-2">任务队列 ({sortedLibrary.length})</h3>
@@ -794,12 +794,12 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
                   <div className="font-bold text-sm flex items-center gap-2">
                      {i.title}
                      {pending && <span className="bg-blue-100 text-blue-700 text-[10px] px-1 rounded">进行中</span>}
-                     {i.cycleMode === 'daily' && <span className="bg-orange-100 text-orange-700 text-[10px] px-1 rounded flex items-center gap-1"><RotateCw size={10}/> 每日</span>}
+                     {i.cycleMode === 'daily' && <span className="bg-orange-100 text-orange-700 text-[10px] px-1 rounded flex items-center gap-1"><RefreshCw size={10}/> 每日</span>}
                   </div>
                   <div className="text-[10px] text-slate-400">计划: {getScheduledTimeDisplay(pushStart, i.nextReview)}</div>
                </div>
                <div className="flex gap-2">
-                   <button onClick={() => setEditingItem(i)} className="p-2 text-slate-400 hover:text-blue-500"><Edit3 size={16}/></button>
+                   <button onClick={() => setEditingItem(i)} className="p-2 text-slate-400 hover:text-blue-500"><Settings size={16}/></button>
                    <button onClick={() => handlePromote(i)} disabled={pending} className={`px-3 py-1 rounded text-xs font-bold border ${pending ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-green-100 text-green-700 border-green-200'}`}>{pending ? '已在列表' : '立即推送'}</button>
                </div>
             </div>
@@ -807,20 +807,12 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
       </div>}
 
       {activeTab==='library' && <div className="space-y-6">
-         
-         <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100">
-             <div className="flex justify-between items-center mb-2">
-                <h3 className="font-bold flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3>
-                {/* 📂 CSV 导入按钮 */}
-                <button onClick={()=>importInputRef.current.click()} className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-200 flex items-center gap-1">
-                    <FileText size={12}/> 导入 Anki/CSV
-                </button>
+         <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><h3 className="font-bold mb-2 flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3><textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词，逗号分隔 (如: apple, banana)"/><button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成</button>
+            <div className="mt-2 text-right">
+                <button onClick={()=>importInputRef.current.click()} className="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded hover:bg-slate-200 flex items-center gap-1 inline-flex"><Upload size={12}/> 导入 CSV/Anki</button>
                 <input type="file" ref={importInputRef} className="hidden" accept=".csv,.txt" onChange={handleImportCSV}/>
-             </div>
-             <textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词，逗号分隔 (如: apple, banana)"/>
-             <button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成</button>
+            </div>
          </div>
-
          <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-slate-300">
            <h3 className="font-bold mb-4">手动添加任务</h3>
            <div className="flex gap-2 mb-3"><button onClick={()=>setNewTaskType('generic')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='generic'?'bg-slate-200 border-slate-400':''}`}>通用任务</button><button onClick={()=>setNewTaskType('english')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='english'?'bg-purple-100 border-purple-400 text-purple-700':''}`}>英语任务</button></div>
@@ -838,13 +830,11 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
              <div className="flex gap-2"><button onClick={handleAddToLibrary} className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-bold">加入计划库</button><button onClick={handlePush} className="flex-1 bg-slate-800 text-white py-3 rounded-lg font-bold">立即推送</button></div>
            </div>
          </div>
-         <div className="bg-white p-4 rounded-xl shadow-sm"><div className="flex justify-between items-center mb-4"><h3 className="font-bold">任务库管理 ({sortedLibrary.length})</h3><div className="flex gap-2"><button onClick={handleExport} className="text-xs text-blue-600">导出CSV</button></div></div><div className="space-y-2 max-h-[300px] overflow-y-auto">{sortedLibrary.map(i=>(<div key={i.id} className="flex justify-between border-b p-2 items-center"><div><div className="font-bold text-sm">{i.title}</div><div className="text-xs text-slate-400">Lv.{i.memoryLevel}</div></div><div className="flex gap-2"><button onClick={()=>setEditingItem(i)} className="text-slate-400 hover:text-blue-500"><Edit3 size={16}/></button><button onClick={()=>onManageLibrary('del',i.id)} className="text-red-400"><Trash2 size={16}/></button></div></div>))}</div></div>
+         <div className="bg-white p-4 rounded-xl shadow-sm"><div className="flex justify-between items-center mb-4"><h3 className="font-bold">任务库管理 ({sortedLibrary.length})</h3><div className="flex gap-2"><button onClick={handleExport} className="text-xs text-blue-600">导出CSV</button></div></div><div className="space-y-2 max-h-[300px] overflow-y-auto">{sortedLibrary.map(i=>(<div key={i.id} className="flex justify-between border-b p-2 items-center"><div><div className="font-bold text-sm">{i.title}</div><div className="text-xs text-slate-400">Lv.{i.memoryLevel}</div></div><div className="flex gap-2"><button onClick={()=>setEditingItem(i)} className="text-slate-400 hover:text-blue-500"><Settings size={16}/></button><button onClick={()=>onManageLibrary('del',i.id)} className="text-red-400"><Trash2 size={16}/></button></div></div>))}</div></div>
       </div>}
 
       {activeTab==='theme' && <div className="bg-white p-4 rounded shadow space-y-4">
         <h3 className="font-bold flex items-center gap-2"><Palette size={18}/> 主题定制</h3>
-        
-        {/* 主题选择器 */}
         <div className="p-3 bg-slate-50 rounded border">
             <label className="text-sm font-bold mb-2 block">界面风格</label>
             <div className="flex gap-2">
@@ -852,63 +842,32 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
                 <button onClick={()=>handleThemeChange('pokemon')} className={`flex-1 py-2 rounded border text-sm font-bold ${themeId==='pokemon'?'bg-yellow-400 text-black border-yellow-500':'bg-white'}`}>宝可梦大师</button>
             </div>
         </div>
-
-        {/* 🔮 新增：形态进化配置 */}
         <div className="border-b pb-4 mb-4">
             <div className="flex justify-between items-center mb-2">
                 <label className="text-xs text-slate-500 font-bold">🔮 进化阶段 (支持上传图片)</label>
-                <button onClick={addStage} className="text-blue-600 text-xs flex gap-1"><PlusCircle size={14}/> 添加阶段</button>
+                <button onClick={addStage} className="text-blue-600 text-xs flex gap-1"><Plus size={14}/> 添加阶段</button>
             </div>
             {levelStages.map((stage, idx) => (
                 <div key={idx} className="flex gap-2 mb-2 items-center bg-slate-50 p-2 rounded">
                     <span className="text-[10px] w-8 text-slate-400">Lv.{stage.minLevel}</span>
-                    <input 
-                        type="number" 
-                        className="w-12 border p-1 rounded text-xs text-center" 
-                        value={stage.minLevel}
-                        disabled={idx === 0} 
-                        onChange={(e) => updateStage(idx, 'minLevel', e.target.value)}
-                    />
-                    <input 
-                        className="flex-1 border p-1 rounded text-xs" 
-                        value={stage.name}
-                        onChange={(e) => updateStage(idx, 'name', e.target.value)}
-                        placeholder="阶段名称"
-                    />
-                    {/* 图片配置行：输入框 + 上传按钮 */}
+                    <input type="number" className="w-12 border p-1 rounded text-xs text-center" value={stage.minLevel} disabled={idx === 0} onChange={(e) => updateStage(idx, 'minLevel', e.target.value)}/>
+                    <input className="flex-1 border p-1 rounded text-xs" value={stage.name} onChange={(e) => updateStage(idx, 'name', e.target.value)} placeholder="阶段名称"/>
                     <div className="relative flex items-center gap-1">
-                        <input 
-                            className="w-20 border p-1 rounded text-[10px] text-slate-500" 
-                            value={stage.image || ''}
-                            onChange={(e) => updateStage(idx, 'image', e.target.value)}
-                            placeholder="图片URL"
-                        />
-                        <button className={`p-1 rounded hover:bg-slate-200 ${stage.image ? 'bg-green-100 text-green-600' : 'bg-slate-100'}`} onClick={() => stageInputRefs.current[idx].click()}>
-                           <Upload size={14}/>
-                        </button>
-                        <input 
-                            type="file" 
-                            className="hidden" 
-                            ref={el => stageInputRefs.current[idx] = el} 
-                            onChange={(e) => handleUpload(e, 'stage', idx)}
-                        />
-                         {/* 缩略图预览 */}
+                        <input className="w-20 border p-1 rounded text-[10px] text-slate-500" value={stage.image || ''} onChange={(e) => updateStage(idx, 'image', e.target.value)} placeholder="图片URL"/>
+                        <button className={`p-1 rounded hover:bg-slate-200 ${stage.image ? 'bg-green-100 text-green-600' : 'bg-slate-100'}`} onClick={() => stageInputRefs.current[idx].click()}><Upload size={14}/></button>
+                        <input type="file" className="hidden" ref={el => stageInputRefs.current[idx] = el} onChange={(e) => handleUpload(e, 'stage', idx)}/>
                         {stage.image && <img src={proxifyUrl(stage.image)} className="w-6 h-6 object-cover rounded border" alt="preview"/>}
                     </div>
-                    {/* 删除按钮 */}
-                    {idx > 0 && <button onClick={() => removeStage(idx)} className="text-red-400"><MinusCircle size={14}/></button>}
+                    {idx > 0 && <button onClick={() => removeStage(idx)} className="text-red-400"><Minus size={14}/></button>}
                 </div>
             ))}
         </div>
-
         <div className="space-y-4">
            <div><label className="text-xs text-slate-500 block mb-1">队长头像</label><div className="flex gap-2"><input className="border flex-1 p-2 rounded text-sm" value={themeMascot} onChange={e=>setThemeMascot(e.target.value)} placeholder="输入URL 或 上传"/><button disabled={uploading} onClick={()=>mascotInputRef.current.click()} className="bg-slate-200 px-3 rounded"><Upload size={16}/></button></div><input type="file" ref={mascotInputRef} className="hidden" accept="image/*" onChange={(e)=>handleUpload(e,'mascot')}/>{themeMascot && <img src={proxifyUrl(themeMascot)} className="w-10 h-10 mt-2 rounded object-cover"/>}</div>
            <div><label className="text-xs text-slate-500 block mb-1">背景图片</label><div className="flex gap-2"><input className="border flex-1 p-2 rounded text-sm" value={themeBg} onChange={e=>setThemeBg(e.target.value)} placeholder="输入URL 或 上传"/><button disabled={uploading} onClick={()=>bgInputRef.current.click()} className="bg-slate-200 px-3 rounded"><Upload size={16}/></button></div><input type="file" ref={bgInputRef} className="hidden" accept="image/*" onChange={(e)=>handleUpload(e,'bg')}/>{themeBg && <img src={proxifyUrl(themeBg)} className="w-20 h-10 mt-2 rounded object-cover"/>}</div>
            <div><label className="text-xs text-slate-500">助手名字</label><input className="border w-full p-2 rounded" value={assistantName} onChange={e=>setAssistantName(e.target.value)} placeholder="小雨点"/></div>
         </div>
-        <button onClick={handleSaveTheme} className={`w-full py-3 rounded font-bold transition-all ${saveStatus==='theme' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}`}>
-          {saveStatus==='theme' ? '✅ 保存所有设置' : '保存设置'}
-        </button>
+        <button onClick={handleSaveTheme} className={`w-full py-3 rounded font-bold transition-all ${saveStatus==='theme' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}`}>{saveStatus==='theme' ? '✅ 保存所有设置' : '保存设置'}</button>
       </div>}
 
       {activeTab==='config' && <div className="bg-white p-4 rounded shadow space-y-6">
@@ -921,7 +880,16 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
         <div className="border-t pt-4"><label className="text-xs text-slate-500 block mb-2">随机任务概率</label>{['english','sport','life'].map(type=>(<div key={type} className="flex items-center gap-2 mb-2"><span className="text-xs w-12 capitalize">{type}</span><input type="range" className="flex-1" min="0" max="100" value={safeProbs[type]||30} onChange={e=>setTaskProbabilities(p=>({...p,[type]:parseInt(e.target.value)}))}/><span className="text-xs w-8">{safeProbs[type]}%</span></div>))}</div>
         <button onClick={handleSaveConfig} className="bg-slate-800 text-white w-full py-3 rounded font-bold">保存配置</button>
         <div className="border-t pt-4 grid grid-cols-2 gap-3"><button onClick={handleBackup} className="p-3 bg-slate-100 rounded text-xs font-bold">备份数据</button><button onClick={()=>fileInputRef.current.click()} className="p-3 bg-slate-100 rounded text-xs font-bold">恢复数据</button><input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div>
-        <div className="pt-4 border-t flex justify-between"><button onClick={onForceSync} className="text-blue-600 text-xs flex gap-1"><Cloud size={14}/> 强制覆盖云端数据</button><button onClick={handleLogout} className="text-red-500 text-xs">退出</button></div></div>}
+        
+        <div className="pt-4 border-t flex justify-between items-center">
+            <button onClick={onForceSync} className="text-blue-600 text-xs flex gap-1"><Cloud size={14}/> 强制覆盖云端数据</button>
+            <button onClick={handleLogout} className="text-red-500 text-xs">退出</button>
+        </div>
+        {/* 调试入口 */}
+        <div className="text-center pt-2">
+             <button onClick={()=>setShowDebug(true)} className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1 mx-auto"><Settings size={10}/> TTS 语音调试</button>
+        </div>
+      </div>}
       
       {activeTab==='monitor' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-4">进行中任务 ({pendingTasks.length})</h3>{pendingTasks.length === 0 ? <p className="text-slate-400">孩子当前空闲</p> : pendingTasks.map(t=><div key={t.id} className="p-3 border-b flex justify-between items-center"><span className="text-sm font-bold">{t.title}</span><div className="flex gap-2"><button onClick={onNudgeKid} className="text-blue-500 text-xs border border-blue-200 px-2 py-1 rounded flex items-center gap-1"><Bell size={12}/> 提醒</button><button onClick={()=>onDeleteTask(t.id)} className="text-red-500 text-xs border border-red-200 px-2 py-1 rounded">撤回</button></div></div>)}</div>}
       {activeTab==='history' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-2">完成记录</h3>{completedTasks.map(t=><div key={t.id} className="p-2 border-b text-sm flex justify-between"><span>{t.title}</span><span className="text-green-600">{formatTime(t.completedAt)}</span></div>)}</div>}
@@ -953,12 +921,12 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
     return (
         <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4">
         <div className="bg-white text-slate-900 w-full max-w-md landscape:max-w-4xl rounded-3xl overflow-hidden shadow-2xl relative flex flex-col landscape:flex-row max-h-[90vh]">
-            <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full z-10"><XCircle /></button>
+            <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full z-10"><X size={24}/></button>
             <div className="w-full h-64 landscape:w-1/2 landscape:h-full bg-slate-100 flex items-center justify-center overflow-hidden"><img src={imageUrl} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none'}}/></div>
             <div className="p-8 text-center flex-1 overflow-y-auto landscape:w-1/2 landscape:flex landscape:flex-col landscape:justify-center">
             {step==='success' ? <div className="py-8"><Trophy size={80} className="mx-auto text-yellow-400"/><h2 className="text-3xl font-bold">挑战成功</h2></div> : <>
                 <h1 className="text-6xl font-bold text-blue-600 mb-4">{word}</h1>
-                <button onClick={()=>playTaskAudio(word, task.flashcardData?.audio)} className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full mb-8"><Headphones size={20}/> 听发音</button>
+                <button onClick={()=>playTaskAudio(word, task.flashcardData?.audio)} className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full mb-8"><Volume2 size={20}/> 听发音</button>
                 {step==='learning' ? <button onClick={handleGoTeach} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-xl">教爷爷奶奶</button> : <div className="bg-slate-50 p-4 rounded-xl"><div className="flex justify-between items-center mb-2"><span className="text-xl font-mono font-bold">{mathQ.a} x {mathQ.b} = ?</span><input type="number" className="w-20 border rounded p-2 text-center" value={mathAns} onChange={e=>setMathAns(e.target.value)}/></div><button onClick={checkMath} className="w-full bg-green-500 text-white py-2 rounded font-bold">家长确认</button></div>}
             </>}
             </div>
@@ -968,7 +936,7 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
 };
 
 const RewardModal = ({ rewards, onClose }) => (<div onClick={onClose} className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/95"><div className="bg-slate-800 border-4 border-yellow-400 p-8 rounded-3xl text-center"><h2 className="text-3xl text-white font-black mb-4">任务完成!</h2><div className="text-yellow-400 text-xl font-bold mb-8">+{rewards.coins} 能量石</div><button className="bg-yellow-500 w-full py-4 rounded-xl font-bold">开心收下</button></div></div>);
-const CollectionModal = ({collection, onClose}) => (<div className="fixed inset-0 z-50 bg-slate-900 text-white"><div className="p-4 flex justify-between border-b border-slate-700"><h2 className="font-bold">收藏馆</h2><button onClick={onClose}><XCircle/></button></div><div className="p-8 text-center text-slate-500">拼图与卡片展示区</div></div>);
+const CollectionModal = ({collection, onClose}) => (<div className="fixed inset-0 z-50 bg-slate-900 text-white"><div className="p-4 flex justify-between border-b border-slate-700"><h2 className="font-bold">收藏馆</h2><button onClick={onClose}><X size={24}/></button></div><div className="p-8 text-center text-slate-500">拼图与卡片展示区</div></div>);
 
 // ==========================================
 // --- 主程序 ---
@@ -1010,7 +978,7 @@ export default function App() {
   const handleForceSync = async () => {
     if(!session) return;
     if(confirm("确定要将当前设备的本地数据覆盖到云端吗？")) {
-       await CloudAPI.sync(session.uid, data, 'force'); // 强制云端同步
+       await CloudAPI.sync(session.uid, data, 'force');
        alert("已强制同步到云端！");
     }
   };
@@ -1051,11 +1019,9 @@ export default function App() {
     newData.user.xp += task.reward;
     
     // 2. 升级逻辑 (Level Up Logic)
-    // 规则：当前等级 N，升级需要 N * 100 经验。经验溢出部分带入下一级。
     let xpNeeded = newData.user.level * 100;
     let isLevelUp = false;
     
-    // 使用 while 循环支持一次升多级（处理积压经验）
     while (newData.user.xp >= xpNeeded) {
        newData.user.xp -= xpNeeded;
        newData.user.level += 1;
@@ -1065,7 +1031,6 @@ export default function App() {
     
     if (isLevelUp) {
         playSystemSound('levelup');
-        // 可以加个简单的 alert 或者 speak
         setTimeout(() => speak(`恭喜升级到 ${newData.user.level} 级！`), 500);
     }
     
