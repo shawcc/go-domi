@@ -5,111 +5,32 @@ import {
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
   Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
-  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe, Info, Play, RotateCw, Bell
+  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe, Info, Play, RotateCw, Bell, Layers, Edit3, PlusCircle, MinusCircle
 } from 'lucide-react';
 
 // ==========================================
-// --- 0. 基础配置与常量 ---
+// --- 0. 基础配置 ---
 // ==========================================
 
-// ⚠️ 生产环境配置: 
-// 填写您的腾讯云服务器地址 (例如 http://43.143.74.76:3000)
 const SERVER_IP = 'http://43.143.74.76:3000'; 
 const BACKEND_HOST = '43.143.74.76:3000';
 
-const STORAGE_KEY = 'go_domi_data_v19_cycle'; 
-
-// 预置主题配置
-const THEMES = {
-  cosmic: {
-    id: 'cosmic', 
-    name: '宇宙护卫队', 
-    bg: 'bg-slate-900', 
-    text: 'text-slate-100', 
-    card: 'bg-slate-800',
-    primary: 'bg-blue-600 hover:bg-blue-500', 
-    accent: 'text-yellow-400',
-    mascot: '/assets/images/mascot.png', 
-    backgroundImage: '/assets/images/bg_cosmic.jpg', 
-    assistant: '小雨点', 
-    currency: '能量石'
-  }
-};
-
-// 水晶进化阶段
-const CRYSTAL_STAGES = [
-  { minLevel: 1, name: '原初晶核', icon: Hexagon, color: 'text-blue-300', scale: 1, message: "能量..." },
-  { minLevel: 3, name: '觉醒晶簇', icon: Triangle, color: 'text-purple-400', scale: 1.2, message: "苏醒..." },
-  { minLevel: 6, name: '辉光棱镜', icon: Octagon, color: 'text-pink-400', scale: 1.4, message: "充能！" },
-  { minLevel: 9, name: '永恒之心', icon: Gem, color: 'text-yellow-300', scale: 1.6, message: "无敌！" },
-];
-
-// 拼图配置
-const PUZZLE_CONFIG = { 
-  totalPieces: 9, 
-  image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80" 
-};
-
-// 预置词库 (Demo)
-const SYSTEM_DICTIONARY = {
-  'cat': { cn: '猫', img: '/assets/images/cat.jpg' }, 
-  'dog': { cn: '狗', img: '/assets/images/dog.jpg' }, 
-  'apple': { cn: '苹果', img: '/assets/images/apple.jpg' }, 
-  'banana': { cn: '香蕉', img: '/assets/images/banana.jpg' }, 
-  'head': { cn: '头', img: '/assets/images/head.jpg' }, 
-};
-
-// 艾宾浩斯复习间隔 (天)
-const REVIEW_INTERVALS = [0, 1, 2, 4, 7, 15, 30]; 
-
-// ==========================================
-// --- 1. 全局样式 (CSS-in-JS) ---
-// ==========================================
 const GlobalStyles = () => (
   <style>{`
-    html, body, #root { 
-      margin: 0; 
-      padding: 0; 
-      width: 100%; 
-      height: 100%; 
-      max-width: none !important; 
-      overflow-x: hidden; 
-      font-family: system-ui, -apple-system, sans-serif; 
-      background-color: #0f172a; 
-    }
+    html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; max-width: none !important; overflow-x: hidden; font-family: system-ui, -apple-system, sans-serif; background-color: #0f172a; }
     ::-webkit-scrollbar { width: 0px; background: transparent; }
     
-    @keyframes shine { 
-      0% { transform: translateX(-100%) rotate(45deg); } 
-      100% { transform: translateX(200%) rotate(45deg); } 
-    }
+    @keyframes shine { 0% { transform: translateX(-100%) rotate(45deg); } 100% { transform: translateX(200%) rotate(45deg); } }
     .shiny-card { position: relative; overflow: hidden; }
-    .shiny-card::after { 
-      content: ""; 
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-      background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%); 
-      transform: translateX(-100%) rotate(45deg); 
-      animation: shine 3s infinite; 
-    }
+    .shiny-card::after { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%); transform: translateX(-100%) rotate(45deg); animation: shine 3s infinite; }
     
-    @keyframes scan { 
-      0% { transform: translateY(-100%); } 
-      100% { transform: translateY(100%); } 
-    }
-    .scan-line { 
-      background: linear-gradient(to bottom, transparent, rgba(239, 68, 68, 0.5), transparent); 
-      animation: scan 3s linear infinite; 
-    }
-    .hazard-stripes { 
-      background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px); 
-      background-size: 50px 50px; 
-    }
+    @keyframes scan { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+    .scan-line { background: linear-gradient(to bottom, transparent, rgba(239, 68, 68, 0.5), transparent); animation: scan 3s linear infinite; }
+    .hazard-stripes { background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 68, 0.1) 10px, rgba(239, 68, 68, 0.1) 20px); background-size: 50px 50px; }
     
-    @keyframes spin-slow { 
-      from { transform: rotate(0deg); } 
-      to { transform: rotate(360deg); } 
-    }
-    
+    @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes bounce-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
     @keyframes shooting-star {
       0% { transform: translateX(0) translateY(0) rotate(45deg); opacity: 1; }
       100% { transform: translateX(-500px) translateY(500px) rotate(45deg); opacity: 0; }
@@ -128,13 +49,6 @@ const GlobalStyles = () => (
   `}</style>
 );
 
-// ==========================================
-// --- 2. 工具函数库 (Utils) ---
-// ==========================================
-
-const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-
-// 智能 URL 处理：解决开发/生产环境差异
 const getApiEndpoint = (path, forceDirect = false) => {
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
      return SERVER_IP ? `${SERVER_IP}${path}` : path;
@@ -143,7 +57,6 @@ const getApiEndpoint = (path, forceDirect = false) => {
   return path;
 };
 
-// 图片代理处理：解决 Mixed Content
 const proxifyUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('data:')) return url; 
@@ -154,96 +67,47 @@ const proxifyUrl = (url) => {
   return url;
 };
 
-// 智能生成任务资源
-const enrichWordTask = (wordInput) => {
-  const word = wordInput.trim();
-  const lowerWord = word.toLowerCase();
-  const preset = SYSTEM_DICTIONARY[lowerWord];
-  const translation = preset ? preset.cn : ''; 
-  const imageUrl = (preset && preset.img) ? preset.img : `https://image.pollinations.ai/prompt/cute cartoon ${word} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${Math.random()}`;
-  const audioUrl = `/assets/audio/${lowerWord}.mp3`;
-  return { word, translation, image: imageUrl, audio: audioUrl };
-};
+// ==========================================
+// --- 1. 基础组件 ---
+// ==========================================
+const LoadingScreen = () => (
+  <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center text-white p-4 z-[100]">
+    <div className="animate-bounce text-6xl mb-4">🚀</div>
+    <h1 className="text-2xl font-bold animate-pulse">正在连接宇宙基地...</h1>
+    <p className="text-slate-400 mt-2">系统初始化中</p>
+  </div>
+);
 
-// 时间处理
-const getBeijingTime = () => { 
-  const now = new Date(); 
-  return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + 8 * 3600000); 
-};
-
-const isBeijingActiveWindow = (start, end) => { 
-  const h = getBeijingTime().getHours(); 
-  return h >= start && h < end; 
-};
-
-const getScheduledTimeDisplay = (pushStart, itemNextReview) => {
-   const now = Date.now();
-   const todayPushStart = new Date();
-   todayPushStart.setHours(pushStart, 0, 0, 0);
-   
-   if (!itemNextReview) return "未计划";
-   
-   if (itemNextReview > now) {
-      return new Date(itemNextReview).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
-   }
-   
-   // 任务已到期
-   return "✅ 队列中 (随时可发)";
-};
-
-const getNextBeijingScheduleTime = (startHour = 19) => { 
-  const t = getBeijingTime(); 
-  t.setHours(startHour - 8,0,0,0); 
-  if(Date.now() >= t.getTime()) t.setDate(t.getDate()+1); 
-  return t.getTime(); 
-};
-
-const formatTime = (ts) => new Date(ts).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
-
-// 语音合成
-const speak = (text) => {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'zh-CN'; 
-  const zh = window.speechSynthesis.getVoices().find(v => v.lang.includes('zh'));
-  if (zh) u.voice = zh;
-  window.speechSynthesis.speak(u);
-};
-
-const speakEnglish = (text) => {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'en-US'; 
-  u.rate = 0.9;
-  window.speechSynthesis.speak(u);
-};
-
-const playTaskAudio = (text, audioUrl) => {
-  if (audioUrl) {
-    const safeUrl = proxifyUrl(audioUrl);
-    const audio = new Audio(safeUrl);
-    audio.play().catch(() => speakEnglish(text));
-  } else speakEnglish(text);
-};
-
-const playSystemSound = (type) => {
-   const sounds = {
-     alert: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
-     success: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
-     patrol: 'https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3',
-     levelup: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
-     nudge: 'https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3'
-   };
-   const a = new Audio(sounds[type]); 
-   a.volume = 0.5; 
-   a.play().catch(()=>{});
-};
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, errorInfo) { console.error("Crash:", error, errorInfo); }
+  render() {
+    if (this.state.hasError) return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-6 text-center">
+        <h2 className="text-xl font-bold mb-2 text-red-400">系统错误</h2>
+        <p className="text-xs text-slate-500 mb-6 max-w-xs break-all bg-slate-800 p-2 rounded">{this.state.error?.toString()}</p>
+        <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-red-600 px-6 py-3 rounded-full font-bold shadow-lg flex items-center gap-2 mx-auto">
+           <RefreshCw size={18}/> 重置系统 (清除缓存)
+        </button>
+      </div>
+    );
+    return this.props.children; 
+  }
+}
 
 // ==========================================
-// --- 3. 数据层 (Data Layer) ---
+// --- 2. 数据引擎 ---
 // ==========================================
+const STORAGE_KEY = 'go_domi_data_v21_fix_final'; 
+const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+
+const CRYSTAL_STAGES = [
+  { minLevel: 1, name: '原初晶核', icon: Hexagon, color: 'text-blue-300', scale: 1, message: "能量..." },
+  { minLevel: 3, name: '觉醒晶簇', icon: Triangle, color: 'text-purple-400', scale: 1.2, message: "苏醒..." },
+  { minLevel: 6, name: '辉光棱镜', icon: Octagon, color: 'text-pink-400', scale: 1.4, message: "充能！" },
+  { minLevel: 9, name: '永恒之心', icon: Gem, color: 'text-yellow-300', scale: 1.6, message: "无敌！" },
+];
 
 const DEFAULT_USER_DATA = {
   user: { 
@@ -255,6 +119,7 @@ const DEFAULT_USER_DATA = {
       assistantName: '小雨点'
     },
     taskProbabilities: { english: 50, sport: 30, life: 20 },
+    levelStages: CRYSTAL_STAGES, 
     nudge: 0
   },
   tasks: [],
@@ -270,7 +135,8 @@ const sanitizeData = (incomingData) => {
         ...DEFAULT_USER_DATA.user, 
         ...safeUser, 
         themeConfig: { ...DEFAULT_USER_DATA.user.themeConfig, ...(safeUser.themeConfig || {}) },
-        taskProbabilities: { ...DEFAULT_USER_DATA.user.taskProbabilities, ...(safeUser.taskProbabilities || {}) }
+        taskProbabilities: { ...DEFAULT_USER_DATA.user.taskProbabilities, ...(safeUser.taskProbabilities || {}) },
+        levelStages: Array.isArray(safeUser.levelStages) ? safeUser.levelStages : CRYSTAL_STAGES
     },
     tasks: Array.isArray(incomingData.tasks) ? incomingData.tasks : [],
     library: Array.isArray(incomingData.library) ? incomingData.library : [],
@@ -311,41 +177,32 @@ const LocalDB = {
 const CloudAPI = {
   login: async (username, forceDirect = false) => {
     const endpoint = getApiEndpoint('/api/login', forceDirect);
-    
     try {
       const controller = new AbortController();
       setTimeout(() => controller.abort(), 8000); 
-      
       const res = await fetch(endpoint, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username }), 
         signal: controller.signal
       });
-      
       if (res.ok) {
         const result = await res.json();
-        const safeData = sanitizeData(result.data);
-        return { uid: username, token: result.token, initialData: safeData, mode: 'cloud' };
+        return { uid: username, token: result.token, initialData: sanitizeData(result.data), mode: 'cloud' };
       } else {
-        if (res.status === 404 && !forceDirect) {
-             throw new Error(`404 错误: 找不到接口。请检查 vercel.json。`);
-        }
+        if (res.status === 404 && !forceDirect) throw new Error("404: 代理失败");
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
     } catch (e) { 
       let warning = `连接失败 (${e.message})。已切换至离线模式。`;
-      if (e.message.includes('Failed to fetch') && window.location.protocol === 'https:' && forceDirect) {
-          warning = '安全拦截: HTTPS 无法直连 HTTP IP。请关闭“强制直连”。';
-      }
+      if (e.message.includes('Failed to fetch') && window.location.protocol === 'https:' && forceDirect) warning = '安全拦截: HTTPS 无法直连 HTTP IP。';
       return { uid: username, token: 'offline', initialData: LocalDB.get(), mode: 'offline', warning, debugInfo: endpoint }; 
     }
   },
   fetchData: async (username) => {
      try {
        const res = await fetch(getApiEndpoint('/api/login'), {
-         method: 'POST', headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ username })
+         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username })
        });
        if (res.ok) {
           const result = await res.json();
@@ -364,13 +221,9 @@ const CloudAPI = {
   },
   upload: async (file) => {
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      const formData = new FormData(); formData.append('file', file);
       const res = await fetch(getApiEndpoint('/api/upload'), { method: 'POST', body: formData });
-      if (res.ok) {
-        const result = await res.json();
-        return result.url; 
-      }
+      if (res.ok) { const result = await res.json(); return result.url; }
     } catch (e) { console.warn("Upload failed", e); }
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -381,64 +234,121 @@ const CloudAPI = {
 };
 
 // ==========================================
-// --- 4. 界面组件 (Components) ---
+// --- 3. 资源与常量 ---
 // ==========================================
+const PUZZLE_CONFIG = { totalPieces: 9, image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80" };
+const SYSTEM_DICTIONARY = {
+  'cat': { cn: '猫', img: '/assets/images/cat.jpg' }, 'dog': { cn: '狗', img: '/assets/images/dog.jpg' }, 
+  'apple': { cn: '苹果', img: '/assets/images/apple.jpg' }, 'banana': { cn: '香蕉', img: '/assets/images/banana.jpg' }, 
+  'head': { cn: '头', img: '/assets/images/head.jpg' }, 
+};
 
-const LoadingScreen = () => (
-  <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center text-white p-4 z-[100]">
-    <div className="animate-bounce text-6xl mb-4">🚀</div>
-    <h1 className="text-2xl font-bold animate-pulse">正在连接宇宙基地...</h1>
-    <p className="text-slate-400 mt-2">系统初始化中</p>
-  </div>
-);
+const enrichWordTask = (wordInput) => {
+  const word = wordInput.trim();
+  const lowerWord = word.toLowerCase();
+  const preset = SYSTEM_DICTIONARY[lowerWord];
+  const translation = preset ? preset.cn : ''; 
+  const imageUrl = (preset && preset.img) ? preset.img : `https://image.pollinations.ai/prompt/cute cartoon ${word} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${Math.random()}`;
+  const audioUrl = `/assets/audio/${lowerWord}.mp3`;
+  return { word, translation, image: imageUrl, audio: audioUrl };
+};
 
-class ErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
-  static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, errorInfo) { console.error("Crash:", error, errorInfo); }
-  render() {
-    if (this.state.hasError) return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-6 text-center">
-        <h2 className="text-xl font-bold mb-2 text-red-400">基地系统遭遇干扰</h2>
-        <p className="text-xs text-slate-500 mb-6 max-w-xs break-all bg-slate-800 p-2 rounded">{this.state.error?.toString()}</p>
-        <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-red-600 px-6 py-3 rounded-full font-bold shadow-lg flex items-center gap-2 mx-auto">
-           <RefreshCw size={18}/> 重置系统 (清除缓存)
-        </button>
-      </div>
-    );
-    return this.props.children; 
+const THEMES = {
+  cosmic: {
+    id: 'cosmic', name: '宇宙护卫队', bg: 'bg-slate-900', text: 'text-slate-100', card: 'bg-slate-800',
+    primary: 'bg-blue-600 hover:bg-blue-500', accent: 'text-yellow-400',
+    mascot: '/assets/images/mascot.png', backgroundImage: '/assets/images/bg_cosmic.jpg', 
+    assistant: '小雨点', currency: '能量石'
+  },
+  pokemon: {
+    id: 'pokemon', name: '宝可梦大师', bg: 'bg-yellow-100', text: 'text-slate-800', card: 'bg-white/90 border-2 border-yellow-400 shadow-xl',
+    primary: 'bg-red-500 hover:bg-red-600', accent: 'text-yellow-600',
+    mascot: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png', 
+    backgroundImage: 'https://images.unsplash.com/photo-1605979255249-1377d3b3f953?q=80&w=1080', 
+    assistant: '洛托姆', currency: '精灵球'
   }
-}
+};
+
+const POKEMON_STAGES = [
+  { minLevel: 1, name: '小毒虫', image: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/13.png', scale: 0.8, message: "我要进化！" }, 
+  { minLevel: 4, name: '铁壳蛹', image: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/14.png', scale: 1.0, message: "正在变硬..." }, 
+  { minLevel: 8, name: '大针蜂', image: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/15.png', scale: 1.2, message: "毒针攻击！" }, 
+  { minLevel: 12, name: '超级大针蜂', image: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/10090.png', scale: 1.4, message: "嗡嗡嗡！" } 
+];
+
+const STAGE_ICONS = [Hexagon, Triangle, Octagon, Gem];
+const REVIEW_INTERVALS = [0, 1, 2, 4, 7, 15, 30]; 
+const MAX_DAILY_TASKS = 10; 
+
+// --- Utilities ---
+const getBeijingTime = () => { const now = new Date(); return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + 8 * 3600000); };
+const isBeijingActiveWindow = (start, end) => { const h = getBeijingTime().getHours(); return h >= start && h < end; };
+
+const getScheduledTimeDisplay = (pushStart, itemNextReview) => {
+   const now = Date.now();
+   const todayPushStart = new Date();
+   todayPushStart.setHours(pushStart, 0, 0, 0);
+   if (!itemNextReview) return "未计划";
+   if (itemNextReview > now) {
+      return new Date(itemNextReview).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+   }
+   return "✅ 队列中 (随时可发)";
+};
+
+const getNextBeijingScheduleTime = (startHour = 19) => { const t = getBeijingTime(); t.setHours(startHour - 8,0,0,0); if(Date.now() >= t.getTime()) t.setDate(t.getDate()+1); return t.getTime(); };
+const formatTime = (ts) => new Date(ts).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+
+const speak = (text) => {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'zh-CN'; 
+  const zh = window.speechSynthesis.getVoices().find(v => v.lang.includes('zh'));
+  if (zh) u.voice = zh;
+  window.speechSynthesis.speak(u);
+};
+const speakEnglish = (text) => {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US'; u.rate = 0.9;
+  window.speechSynthesis.speak(u);
+};
+const playTaskAudio = (text, audioUrl) => {
+  if (audioUrl) {
+    const safeUrl = proxifyUrl(audioUrl);
+    const audio = new Audio(safeUrl);
+    audio.play().catch(() => speakEnglish(text));
+  } else speakEnglish(text);
+};
+const playSystemSound = (type) => {
+   const sounds = {
+     alert: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
+     success: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
+     patrol: 'https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3',
+     levelup: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
+     nudge: 'https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3'
+   };
+   const a = new Audio(sounds[type]); a.volume = 0.5; a.play().catch(()=>{});
+};
+
+// ==========================================
+// --- 4. 界面组件 ---
+// ==========================================
 
 const LoginScreen = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [useDirect, setUseDirect] = useState(false);
-  const [debugEndpoint, setDebugEndpoint] = useState('');
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!username.trim()) return;
-    setLoading(true);
-    setErrorMsg('');
+    e.preventDefault(); if (!username.trim()) return; setLoading(true); setErrorMsg('');
     try {
       const session = await CloudAPI.login(username.trim(), useDirect);
-      if (session.warning) {
-        setErrorMsg(session.warning);
-        setDebugEndpoint(session.debugInfo || '');
-      }
-      
-      if (session.mode === 'offline') {
-        setTimeout(() => onLogin(session), 2500);
-      } else {
-        onLogin(session);
-      }
-    } catch(e) { 
-      setErrorMsg(e.message);
-    } finally { 
-      setLoading(false); 
-    }
+      if (session.warning) setErrorMsg(session.warning);
+      if (session.mode === 'offline') setTimeout(() => onLogin(session), 2500); else onLogin(session);
+    } catch(e) { setErrorMsg(e.message); } finally { setLoading(false); }
   };
 
   return (
@@ -446,43 +356,10 @@ const LoginScreen = ({ onLogin }) => {
       <div className="relative z-10 w-full max-w-sm bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V19.0 (Full)</p>
-        
-        {SERVER_IP && (
-            <div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between">
-                <span className="flex gap-2"><Server size={14}/> {SERVER_IP}</span>
-                <button onClick={()=>setUseDirect(!useDirect)} className={`text-[10px] px-1 rounded ${useDirect?'bg-red-500 text-white':'text-slate-500'}`}>
-                   {useDirect ? '强制直连' : '代理模式'}
-                </button>
-            </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-           <div className="relative">
-             <User className="absolute left-3 top-3.5 text-slate-400" size={20} />
-             <input 
-               type="text" 
-               className="w-full bg-slate-900/50 border border-slate-600 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all"
-               placeholder="请输入特工代号"
-               value={username}
-               onChange={e => setUsername(e.target.value)}
-             />
-           </div>
-           <button 
-             type="submit" 
-             disabled={loading}
-             className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2"
-           >
-             {loading ? <Loader2 className="animate-spin"/> : "连接基地"}
-           </button>
-        </form>
-
-        {errorMsg && (
-           <div className="mt-4 p-3 bg-red-900/50 border border-red-500/50 rounded-xl text-red-200 text-xs flex flex-col gap-1 animate-in slide-in-from-top-2">
-              <div className="flex items-start gap-2 font-bold"><AlertTriangle size={16} className="shrink-0 mt-0.5" /> <span>{errorMsg}</span></div>
-              {debugEndpoint && <div className="text-[10px] opacity-70 break-all font-mono pl-6">尝试连接: {debugEndpoint}</div>}
-           </div>
-        )}
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V21.1</p>
+        {SERVER_IP && (<div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between"><span className="flex gap-2"><Server size={14}/> {SERVER_IP}</span><button onClick={()=>setUseDirect(!useDirect)} className={`text-[10px] px-1 rounded ${useDirect?'bg-red-500 text-white':'text-slate-500'}`}>{useDirect ? '强制直连' : '代理模式'}</button></div>)}
+        <form onSubmit={handleSubmit} className="space-y-4"><div className="relative"><User className="absolute left-3 top-3.5 text-slate-400" size={20} /><input type="text" className="w-full bg-slate-900/50 border border-slate-600 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-400" placeholder="特工代号" value={username} onChange={e => setUsername(e.target.value)} /></div><button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2">{loading ? <Loader2 className="animate-spin"/> : "连接基地"}</button></form>
+        {errorMsg && <div className="mt-4 p-3 bg-red-900/50 border border-red-500/50 rounded-xl text-red-200 text-xs flex items-start gap-2"><AlertTriangle size={16} className="shrink-0 mt-0.5" /><span>{errorMsg}</span></div>}
         <div className="mt-6 text-center text-xs text-slate-500"><button onClick={LocalDB.export} className="text-blue-400 hover:underline">导出本地数据备份</button></div>
       </div>
     </div>
@@ -493,57 +370,121 @@ const DynamicBackground = ({ themeId, customBg }) => {
   const [bgError, setBgError] = useState(false);
   const safeBg = proxifyUrl(customBg);
   useEffect(() => { setBgError(false); }, [customBg]);
-  if (customBg && !bgError) return (<div className="absolute inset-0 z-0"><img src={safeBg} className="w-full h-full object-cover opacity-60" onError={() => setBgError(true)} /><div className="absolute inset-0 bg-black/40"></div></div>);
-  return (<div className="absolute inset-0 overflow-hidden pointer-events-none z-0"><div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black"></div>{[...Array(20)].map((_, i)=><div key={i} className="absolute w-0.5 h-0.5 bg-white rounded-full animate-pulse" style={{left:`${Math.random()*100}%`, top:`${Math.random()*100}%`}}></div>)}
-        <div className="absolute top-10 right-10 shooting-star"></div>
-        <div className="absolute top-1/3 left-20 shooting-star" style={{animationDelay: '3s'}}></div>
-  </div>);
+  
+  if (customBg && !bgError) return (<div className="absolute inset-0 z-0"><img src={safeBg} className="w-full h-full object-cover opacity-80" onError={() => setBgError(true)} /><div className="absolute inset-0 bg-black/30"></div></div>);
+  if (themeId === 'cosmic') return (<div className="absolute inset-0 overflow-hidden pointer-events-none z-0"><div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black"></div>{[...Array(20)].map((_, i)=><div key={i} className="absolute w-0.5 h-0.5 bg-white rounded-full animate-pulse" style={{left:`${Math.random()*100}%`, top:`${Math.random()*100}%`}}></div>)}<div className="absolute top-10 right-10 shooting-star"></div></div>);
+  return (<div className="absolute inset-0 z-0 bg-gradient-to-br from-yellow-50 to-orange-100"></div>);
 };
 
-const GrowingCrystal = ({ level, xp, onClick }) => {
-  const currentStage = [...CRYSTAL_STAGES].reverse().find(stage => level >= stage.minLevel) || CRYSTAL_STAGES[0];
-  const Icon = currentStage.icon;
+const MainCharacter = ({ themeId, level, onClick, userProfile }) => {
   const [isPoked, setIsPoked] = useState(false);
-  const handlePoke = () => { setIsPoked(true); speak(currentStage.message); if(onClick) onClick(); setTimeout(() => setIsPoked(false), 500); };
-  return (<div className="flex-1 flex flex-col items-center justify-center relative py-12 cursor-pointer group w-full" onClick={handlePoke}><div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="w-80 h-80 border border-blue-500/10 rounded-full animate-[spin-slow_20s_linear_infinite]"><div className="absolute top-0 left-1/2 w-2 h-2 bg-blue-400 rounded-full shadow-lg shadow-blue-400"></div></div></div><div className={`absolute w-64 h-64 rounded-full blur-[80px] opacity-40 animate-pulse-slow transition-colors duration-1000 ${currentStage.color.replace('text-', 'bg-')}`}></div><div className={`relative transition-all duration-300 ease-out ${isPoked ? 'scale-110 rotate-3' : ''}`} style={{ transform: isPoked ? undefined : `scale(1.2)` }}><div className="absolute inset-0 bg-white/20 blur-xl rounded-full animate-pulse"></div><Icon size={120} strokeWidth={1} className={`${currentStage.color} drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] filter`} /></div><div className="mt-12 text-center z-10 pointer-events-none"><div className="text-blue-200 text-xs font-bold tracking-[0.2em] uppercase mb-1">当前形态</div><h2 className={`text-3xl font-black text-white drop-shadow-lg ${currentStage.color}`}>{currentStage.name}</h2></div></div>);
+  const handlePoke = () => { setIsPoked(true); if(onClick) onClick(); setTimeout(() => setIsPoked(false), 500); };
+  
+  // 智能合并策略
+  const stages = (userProfile?.levelStages && userProfile.levelStages.length > 0) 
+                 ? userProfile.levelStages 
+                 : (themeId === 'pokemon' ? POKEMON_STAGES : CRYSTAL_STAGES);
+
+  const currentStage = [...stages].reverse().find(s => level >= s.minLevel) || stages[0];
+  const stageIndex = stages.indexOf(currentStage);
+  
+  // 安全获取 Icon
+  const Icon = STAGE_ICONS[stageIndex % STAGE_ICONS.length] || Hexagon;
+  const stageImage = currentStage.image ? proxifyUrl(currentStage.image) : null;
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center relative py-12 cursor-pointer group w-full" onClick={() => { handlePoke(); speak(currentStage.message); }}>
+        <div className={`relative transition-all duration-300 ease-out ${isPoked ? 'scale-110 -rotate-3' : 'animate-[bounce-slow_3s_infinite]'} drop-shadow-2xl`}>
+            {stageImage ? (
+                <img src={stageImage} className="w-64 h-64 object-contain filter drop-shadow-lg" alt={currentStage.name} />
+            ) : (
+                <>
+                  <div className="absolute inset-0 bg-white/20 blur-xl rounded-full animate-pulse"></div>
+                  <Icon size={120} strokeWidth={1} className={`${currentStage.color || 'text-blue-400'} drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] filter`} />
+                </>
+            )}
+        </div>
+        <div className="mt-8 text-center">
+            <div className={`inline-block px-4 py-1 rounded-full font-bold shadow-sm border ${themeId==='pokemon' ? 'bg-white/80 text-slate-800 border-yellow-400' : 'text-blue-200 border-blue-500/30 bg-blue-900/40'}`}>
+                Lv.{level} {currentStage.name}
+            </div>
+        </div>
+    </div>
+  );
 };
 
 const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, processingTasks, userProfile }) => {
   const task = tasks[0]; 
   const isProcessing = processingTasks.has(task.id);
   const isEnglish = task.type === 'english';
-  const rawImage = isEnglish ? task.flashcardData?.image : (task.image || task.flashcardData?.image);
-  const taskImage = proxifyUrl(rawImage);
-  const displayTitle = isEnglish ? "英语挑战" : task.title;
-  const assistantName = userProfile?.themeConfig?.assistantName || "小雨点";
+  const taskImage = proxifyUrl(isEnglish ? task.flashcardData?.image : (task.image || task.flashcardData?.image));
+  const assistantName = userProfile?.themeConfig?.assistantName || currentTheme.assistant;
 
   useEffect(() => { const t = setTimeout(() => { playSystemSound('alert'); const intro = isEnglish ? "英语挑战！" : "紧急任务！"; const content = isEnglish ? "请完成一个单词练习" : task.title; setTimeout(() => speak(`${intro} ${content}`), 1000); }, 300); return () => clearTimeout(t); }, [task]);
-  return (<div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"><div className="absolute inset-0 overflow-hidden pointer-events-none"><div className="absolute inset-0 bg-gradient-to-b from-transparent via-red-900/20 to-transparent animate-[scan_3s_linear_infinite] transform -translate-y-full scan-line"></div><div className="absolute inset-0 hazard-stripes"></div></div><div className="w-full max-w-lg bg-slate-800 rounded-3xl border-4 border-red-500 shadow-2xl relative overflow-hidden flex flex-col landscape:flex-row"><div className="bg-red-500 text-white p-4 flex items-center justify-center gap-3 animate-pulse"><Siren size={24} /> <h2 className="text-xl font-black">紧急任务</h2></div><div className="p-8 flex flex-col items-center text-center"><div className="mb-6 w-48 h-48 rounded-2xl bg-white/10 flex items-center justify-center overflow-hidden border-2 border-white/20 shadow-lg group">{taskImage ? <img src={taskImage} className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onError={(e)=>{e.target.style.display='none'}} /> : <div className="text-6xl animate-bounce">{isEnglish?"A":"⚔️"}</div>}</div><div className="space-y-2 mb-8"><div className="flex items-center justify-center gap-2 text-blue-300 text-xs font-bold uppercase animate-pulse">来自 {assistantName} 的信号...</div><h1 className="text-3xl font-bold text-white">{displayTitle}</h1><div className="inline-flex items-center gap-2 bg-yellow-400/20 text-yellow-400 px-4 py-1 rounded-full border border-yellow-400/30 mt-2"><Zap size={18} fill="currentColor"/><span className="font-bold text-lg">奖励 {task.reward}</span></div></div><div className="w-full">{isEnglish ? <button onClick={()=>onPlayFlashcard(task)} disabled={isProcessing} className="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-2xl font-black text-xl">开始挑战</button> : <button onClick={()=>onCompleteTask(task)} disabled={isProcessing} className="w-full bg-green-600 hover:bg-green-500 text-white py-4 rounded-2xl font-black text-xl">确认完成</button>}</div></div></div></div>);
+  
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+       <div className={`w-full max-w-sm ${currentTheme.card} rounded-3xl overflow-hidden shadow-2xl relative flex flex-col`}>
+          <div className={`${currentTheme.primary} text-white p-3 flex items-center justify-center gap-2 animate-pulse`}><Siren size={20} /> <h2 className="text-lg font-black">紧急任务</h2></div>
+          <div className="p-6 flex flex-col items-center text-center">
+            <div className="mb-4 w-40 h-40 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-slate-200 shadow-inner">
+                {taskImage ? <img src={taskImage} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none'}} /> : <div className="text-4xl">⚔️</div>}
+            </div>
+            <div className="space-y-1 mb-6">
+               <div className="text-xs font-bold uppercase opacity-60">来自 {assistantName} 的信号</div>
+               <h1 className={`text-2xl font-black ${currentTheme.text === 'text-slate-100' ? 'text-white' : 'text-slate-800'}`}>{task.title}</h1>
+               <div className="inline-flex items-center gap-1 bg-yellow-400/20 text-yellow-600 px-3 py-0.5 rounded-full mt-2 font-bold text-sm"><Zap size={14} fill="currentColor"/> +{task.reward}</div>
+            </div>
+            <div className="w-full">
+              {isEnglish ? <button onClick={()=>onPlayFlashcard(task)} disabled={isProcessing} className={`w-full ${currentTheme.primary} text-white py-3 rounded-xl font-bold text-lg shadow-lg active:scale-95`}>开始挑战</button> : <button onClick={()=>onCompleteTask(task)} disabled={isProcessing} className={`w-full ${currentTheme.primary} text-white py-3 rounded-xl font-bold text-lg shadow-lg active:scale-95`}>确认完成</button>}
+            </div>
+          </div>
+       </div>
+    </div>
+  );
 };
 
 const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, toggleParentMode, processingTasks, hiddenTaskIds, onStartPatrol, isPatrolling, isPlaying, onOpenCollection, connectionMode, onForceSync, onLogout }) => {
-  const currentTheme = THEMES.cosmic;
-  const displayTasks = tasks.filter(t => t.status === 'pending');
-  const progressPercent = Math.min((userProfile.xp / (userProfile.level*100)) * 100, 100);
+  const themeId = userProfile.theme || 'cosmic';
+  const currentTheme = THEMES[themeId] || THEMES.cosmic;
+  
   const mascotImg = proxifyUrl(userProfile.themeConfig?.mascot || currentTheme.mascot);
   const bgImg = proxifyUrl(userProfile.themeConfig?.background || currentTheme.backgroundImage);
+  const progressPercent = Math.min((userProfile.xp / (userProfile.level*100)) * 100, 100);
+
+  const headerBgClass = themeId === 'pokemon' ? 'bg-white/60 text-slate-800' : 'bg-black/20 text-white';
 
   return (
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} flex flex-col relative`}>
-      <DynamicBackground themeId="cosmic" customBg={bgImg} />
-      {isPatrolling && <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60"><div className="w-[300px] h-[300px] border-4 border-green-500 rounded-full animate-ping"></div><div className="mt-8 text-green-400 font-mono text-2xl font-black animate-pulse">SCANNING...</div></div>}
+      <DynamicBackground themeId={themeId} customBg={bgImg} />
       
-      {/* 顶部状态栏 */}
-      <div 
-        onClick={onForceSync}
-        className={`w-full py-1 text-center text-[10px] font-bold cursor-pointer transition-colors ${connectionMode === 'cloud' ? 'bg-green-600 text-white' : 'bg-red-600 text-white animate-pulse'}`}
-      >
-         {connectionMode === 'cloud' ? '🟢 基地在线 (点击强制同步)' : `🔴 ${connectionMode === 'offline' ? '离线模式' : '连接异常'} (点击重试)`}
+      <div onClick={onForceSync} className={`w-full py-1 text-center text-[10px] font-bold cursor-pointer transition-colors ${connectionMode === 'cloud' ? 'bg-green-600 text-white' : 'bg-red-600 text-white animate-pulse'}`}>{connectionMode === 'cloud' ? '🟢 基地在线' : `🔴 ${connectionMode === 'offline' ? '离线模式' : '连接异常'} (点击重试)`}</div>
+      
+      <div className={`w-full p-4 flex justify-between items-center backdrop-blur-md z-10 ${headerBgClass}`}>
+         <div className="flex items-center gap-3">
+            <button onClick={onLogout} className="opacity-50 hover:opacity-100"><LogOut size={16}/></button>
+            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/50 bg-white"><img src={mascotImg} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none'}}/></div>
+            <div><div className="font-bold leading-tight">多米队长</div><div className="text-xs opacity-70 font-mono">Lv.{userProfile.level}</div></div>
+         </div>
+         <div className="flex gap-2">
+            <div className="flex items-center gap-1 bg-black/10 px-3 py-1 rounded-full border border-black/5"><Zap size={14} className="text-yellow-500 fill-yellow-500"/><span className="font-bold">{userProfile.coins}</span></div>
+            <button onClick={toggleParentMode} className="p-1"><Settings size={20}/></button>
+         </div>
       </div>
 
-      <div className="w-full p-4 flex justify-between items-center bg-black/20 backdrop-blur-md z-10"><div className="flex items-center gap-3"><button onClick={onLogout} className="w-8 h-8 rounded-full bg-slate-800/80 flex items-center justify-center border border-white/20 text-red-400 mr-2 hover:bg-slate-700 transition-colors"><LogOut size={14}/></button><div className="w-14 h-14 bg-white/10 rounded-full overflow-hidden"><img src={mascotImg} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none';e.target.nextSibling.style.display='block'}}/><Rocket className="text-yellow-400 hidden" size={32}/></div><div><div className="font-bold">多米队长</div><div className="text-xs opacity-70">Lv.{userProfile.level}</div></div></div><div className="flex gap-3"><div className="flex items-center gap-1 bg-black/40 px-3 py-1 rounded-full"><Zap size={14} className="text-yellow-400"/><span className="font-bold text-yellow-400">{userProfile.coins}</span></div><button onClick={toggleParentMode}><Settings size={20}/></button></div></div>
-      <div className="flex-1 relative z-10 flex flex-col"><div className="px-6 mt-4"><div className="w-full bg-black/40 h-3 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{width: `${progressPercent}%`}}></div></div></div><GrowingCrystal level={userProfile.level} xp={userProfile.xp} onClick={() => speak(currentTheme.currency)} /><div className="fixed bottom-6 w-full flex justify-center gap-6 items-end pb-4 pointer-events-none"><button onClick={()=>onOpenCollection('puzzle')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><Puzzle className="text-yellow-400"/></button><button onClick={onStartPatrol} disabled={isPatrolling} className="pointer-events-auto w-24 h-24 bg-blue-600 rounded-full flex flex-col items-center justify-center border-4 border-blue-400 shadow-xl mb-2"><Radar className="text-white w-10 h-10"/><span className="text-[10px] font-black uppercase mt-1">巡逻</span></button><button onClick={()=>onOpenCollection('cards')} className="pointer-events-auto w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center border-2 border-slate-600"><BookOpen className="text-blue-400"/></button></div></div>
-      {displayTasks.length > 0 && !isPlaying && <TaskPopup userProfile={userProfile} tasks={displayTasks} currentTheme={currentTheme} onCompleteTask={onCompleteTask} onPlayFlashcard={onPlayFlashcard} processingTasks={processingTasks} />}
+      <div className="flex-1 relative z-10 flex flex-col items-center justify-center pb-24">
+         <div className="w-64 h-3 bg-black/10 rounded-full overflow-hidden mb-4 border border-black/5"><div className="h-full bg-blue-500 transition-all duration-1000" style={{width: `${progressPercent}%`}}></div></div>
+         
+         <MainCharacter themeId={themeId} level={userProfile.level} xp={userProfile.xp} onClick={() => speak(currentTheme.currency)} userProfile={userProfile} />
+         
+         <div className="fixed bottom-8 w-full flex justify-center gap-8 items-end pointer-events-none">
+            <button onClick={()=>onOpenCollection('puzzle')} className="pointer-events-auto flex flex-col items-center gap-1 group"><div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg border-2 border-slate-100 group-active:scale-95 transition-all"><Puzzle className="text-yellow-500" size={24}/></div><span className="text-[10px] font-bold opacity-80 bg-black/20 px-2 rounded text-white">图鉴</span></button>
+            <button onClick={onStartPatrol} disabled={isPatrolling} className="pointer-events-auto flex flex-col items-center gap-1 group -translate-y-4"><div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-xl border-4 border-white transition-all ${isPatrolling ? 'bg-slate-400' : 'bg-blue-600 hover:bg-blue-500'} group-active:scale-95`}><Radar className={`text-white w-8 h-8 ${isPatrolling?'animate-spin':''}`}/></div><span className="text-xs font-black uppercase tracking-widest bg-blue-600 text-white px-3 py-0.5 rounded-full shadow-lg">巡逻</span></button>
+            <button onClick={()=>onOpenCollection('cards')} className="pointer-events-auto flex flex-col items-center gap-1 group"><div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg border-2 border-slate-100 group-active:scale-95 transition-all"><BookOpen className="text-blue-500" size={24}/></div><span className="text-[10px] font-bold opacity-80 bg-black/20 px-2 rounded text-white">卡片</span></button>
+         </div>
+      </div>
+      
+      {tasks.length > 0 && !isPlaying && <TaskPopup tasks={tasks} currentTheme={currentTheme} onCompleteTask={onCompleteTask} onPlayFlashcard={onPlayFlashcard} processingTasks={processingTasks} userProfile={userProfile} />}
     </div>
   );
 };
@@ -552,81 +493,122 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const [activeTab, setActiveTab] = useState('plan'); 
     const [saveStatus, setSaveStatus] = useState(''); 
     
-    // Form & Config States
+    // Config states
+    const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
+    const [pushEnd, setPushEnd] = useState(userProfile.pushEndHour || 21);
+    const [dailyLimit, setDailyLimit] = useState(userProfile.dailyLimit || 10);
+    const [taskProbabilities, setTaskProbabilities] = useState(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
+    
+    // Theme States
+    const [themeId, setThemeId] = useState(userProfile.theme || 'cosmic');
+    const [themeMascot, setThemeMascot] = useState(userProfile.themeConfig?.mascot || '');
+    const [themeBg, setThemeBg] = useState(userProfile.themeConfig?.background || '');
+    const [assistantName, setAssistantName] = useState(userProfile.themeConfig?.assistantName || '');
+    
+    // Level Config States
+    const getInitialStages = () => {
+        if (userProfile.levelStages && userProfile.levelStages.length > 0) return userProfile.levelStages;
+        return userProfile.theme === 'pokemon' ? POKEMON_STAGES : CRYSTAL_STAGES;
+    };
+    const [levelStages, setLevelStages] = useState(getInitialStages());
+
+    // Add Task States
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [newTaskType, setNewTaskType] = useState('generic');
     const [newTaskReward, setNewTaskReward] = useState(20);
-    const [newTaskCycle, setNewTaskCycle] = useState('ebbinghaus'); 
+    const [newTaskCycle, setNewTaskCycle] = useState('ebbinghaus');
     const [flashcardWord, setFlashcardWord] = useState('');
     const [flashcardTrans, setFlashcardTrans] = useState('');
     const [flashcardImg, setFlashcardImg] = useState('');
     const [flashcardAudio, setFlashcardAudio] = useState('');
     const [batchWords, setBatchWords] = useState('');
     const [uploading, setUploading] = useState(false);
-    
-    const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
-    const [pushEnd, setPushEnd] = useState(userProfile.pushEndHour || 21);
-    const [dailyLimit, setDailyLimit] = useState(userProfile.dailyLimit || 10);
-    const [taskProbabilities, setTaskProbabilities] = useState(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
-    const [themeMascot, setThemeMascot] = useState(userProfile.themeConfig?.mascot || '');
-    const [themeBg, setThemeBg] = useState(userProfile.themeConfig?.background || '');
-    const [assistantName, setAssistantName] = useState(userProfile.themeConfig?.assistantName || '');
-    
+
     const mascotInputRef = useRef(null);
     const bgInputRef = useRef(null);
     const fileInputRef = useRef(null);
+    const stageInputRefs = useRef([]);
 
-    // 🛡️ Safe Lists
     const safeTasks = Array.isArray(tasks) ? tasks : [];
     const safeLibrary = Array.isArray(libraryItems) ? libraryItems : [];
+    const sortedLibrary = [...safeLibrary].sort((a,b) => a.nextReview - b.nextReview);
+    const isPending = (libId) => safeTasks.some(t => t.libraryId === libId && t.status === 'pending');
     const pendingTasks = safeTasks.filter(t => t.status === 'pending');
     const completedTasks = safeTasks.filter(t => t.status === 'completed');
-    const sortedLibrary = [...safeLibrary].sort((a,b) => a.nextReview - b.nextReview);
-    const isPending = (libId) => pendingTasks.some(t => t.libraryId === libId);
 
     const refresh = () => { if(onDataChange) onDataChange(); };
 
-    // 监听 userProfile 变化同步 state
+    // Update state when profile changes (e.g. cloud sync)
     useEffect(() => {
         if(userProfile) {
             setPushStart(userProfile.pushStartHour || 19);
             setPushEnd(userProfile.pushEndHour || 21);
             setDailyLimit(userProfile.dailyLimit || 10);
             setTaskProbabilities(userProfile.taskProbabilities || { english: 50, sport: 30, life: 20 });
+            setThemeId(userProfile.theme || 'cosmic');
             if(userProfile.themeConfig) {
                 setThemeMascot(userProfile.themeConfig.mascot || '');
                 setThemeBg(userProfile.themeConfig.background || '');
                 setAssistantName(userProfile.themeConfig.assistantName || '');
             }
+            if(userProfile.levelStages && userProfile.levelStages.length > 0) {
+                setLevelStages(userProfile.levelStages);
+            }
         }
     }, [userProfile]);
 
-    const handleUpload = async (e, type) => {
+    const handleUpload = async (e, type, idx) => {
        const file = e.target.files[0];
        if(!file) return;
        setUploading(true);
        try {
          const url = await CloudAPI.upload(file);
          if (type === 'mascot') setThemeMascot(url);
-         if (type === 'bg') setThemeBg(url);
-         alert("上传成功! (请点击下方保存按钮应用)");
+         else if (type === 'bg') setThemeBg(url);
+         else if (type === 'stage' && idx !== undefined) {
+             const newStages = [...levelStages];
+             newStages[idx].image = url; 
+             setLevelStages(newStages);
+         }
+         alert("上传成功!");
        } catch (err) { alert(err.message); } finally { setUploading(false); }
+    };
+
+    const handleThemeChange = (newTheme) => {
+        setThemeId(newTheme);
+        if (confirm("是否同时将等级形态重置为该主题默认配置？(自定义形态将被覆盖)")) {
+            setLevelStages(newTheme === 'pokemon' ? POKEMON_STAGES : CRYSTAL_STAGES);
+        }
     };
 
     const handleSaveTheme = () => {
       try {
         onUpdateProfile({ 
-          themeConfig: { mascot: themeMascot, background: themeBg, assistantName: assistantName }
+          theme: themeId,
+          themeConfig: { mascot: themeMascot, background: themeBg, assistantName: assistantName },
+          levelStages: levelStages
         });
         setSaveStatus('theme');
         setTimeout(() => setSaveStatus(''), 2000);
-        alert("✅ 主题已更新！");
-      } catch (e) {
-        console.error(e);
-        alert("保存失败，请重试");
-      }
+        alert("✅ 主题与形态配置已更新！");
+      } catch (e) { console.error(e); alert("保存失败"); }
     };
     
+    const updateStage = (idx, field, value) => {
+        const newStages = [...levelStages];
+        newStages[idx][field] = value;
+        setLevelStages(newStages);
+    };
+    const addStage = () => {
+        const lastStage = levelStages[levelStages.length-1];
+        setLevelStages([...levelStages, { minLevel: (lastStage?.minLevel || 0) + 5, name: '新形态', message: "进化！", image: '' }]);
+    };
+    const removeStage = (idx) => {
+        if(levelStages.length <= 1) return alert("至少保留一个阶段");
+        const newStages = levelStages.filter((_, i) => i !== idx);
+        setLevelStages(newStages);
+    };
+
     const constructTaskData = () => ({
         title: newTaskType === 'english' ? `练习单词: ${flashcardWord}` : newTaskTitle,
         type: newTaskType,
@@ -637,23 +619,26 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     });
 
     const handlePush = (e) => { e.preventDefault(); onAddTask(constructTaskData()); alert('已推送'); refresh(); };
-    const handleAddToLibrary = (e) => { e.preventDefault(); onManageLibrary('add', { ...constructTaskData(), memoryLevel: 0, nextReview: Date.now() }); alert('已添加到库 (立即生效)'); refresh(); };
-    const handleBatchAddWords = () => { if (!batchWords.trim()) return; const words = batchWords.split(/[,，\n]/).map(w => w.trim()).filter(w => w); let count = 0; words.forEach(word => { const enrichedData = enrichWordTask(word); onManageLibrary('add', { title: `练习单词: ${enrichedData.word}`, type: 'english', reward: 20, flashcardData: enrichedData, memoryLevel: 0, nextReview: Date.now(), cycleMode: 'ebbinghaus' }); count++; }); alert(`成功生成 ${count} 个任务！`); setBatchWords(''); refresh(); };
-    const handleSaveConfig = () => { onUpdateProfile({ taskProbabilities, pushStartHour: parseInt(pushStart), pushEndHour: parseInt(pushEnd), dailyLimit: parseInt(dailyLimit) }); alert("保存成功"); };
-    
-    // “立即推送”功能
-    const handlePromote = (libraryItem) => {
-        onPromoteTask(libraryItem);
-        alert("已插队推送！手机端即刻可见。");
-        refresh();
+    const handleAddToLibrary = (e) => { e.preventDefault(); onManageLibrary('add', { ...constructTaskData(), memoryLevel: 0, nextReview: Date.now() }); alert('已入库'); refresh(); };
+    const handleBatchAddWords = () => { if (!batchWords.trim()) return; const words = batchWords.split(/[,，\n]/).map(w => w.trim()).filter(w => w); let count = 0; words.forEach(word => { const enrichedData = enrichWordTask(word); onManageLibrary('add', { title: `练习单词: ${enrichedData.word}`, type: 'english', reward: 20, flashcardData: enrichedData, memoryLevel: 0, nextReview: Date.now(), cycleMode: 'ebbinghaus' }); count++; }); alert(`成功生成 ${count} 个！`); setBatchWords(''); refresh(); };
+    const handleSaveConfig = () => { 
+        // 关键：保存时把 levelStages 一起存进去
+        onUpdateProfile({ 
+            taskProbabilities, 
+            pushStartHour: parseInt(pushStart), 
+            pushEndHour: parseInt(pushEnd), 
+            dailyLimit: parseInt(dailyLimit), 
+            levelStages: levelStages 
+        }); 
+        alert("配置已保存 (含进化形态)"); 
     };
-
+    
+    const handlePromote = (libraryItem) => { onPromoteTask(libraryItem); alert("已插队推送！"); refresh(); };
     const handleExport = () => { const BOM = "\uFEFF"; const rows = sortedLibrary.map(item => `${(item.title||"").replace(/,/g,"，")},${item.type},${item.cycleMode||'ebbinghaus'}`); const blob = new Blob([BOM + "标题,类型,循环模式\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = "tasks.csv"; document.body.appendChild(link); link.click(); link.remove(); };
     const handleBackup = () => { const data = LocalDB.get(); const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_${Date.now()}.json`; document.body.appendChild(link); link.click(); link.remove(); };
     const handleRestore = (e) => { const file = e.target.files[0]; if(!file)return; const reader = new FileReader(); reader.onload = (ev) => { try { LocalDB.restore(JSON.parse(ev.target.result)); } catch { alert("文件错误"); } }; reader.readAsText(file); };
+    
     const handleLogout = () => { if(confirm("确定要退出登录吗？")) window.location.reload(); };
-
-    // 安全获取 taskProbabilities
     const safeProbs = taskProbabilities || { english: 50, sport: 30, life: 20 };
 
     return (<div className="fixed inset-0 bg-slate-100 z-50 p-4 overflow-y-auto">
@@ -675,7 +660,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
                   <div className="text-[10px] text-slate-400">计划: {getScheduledTimeDisplay(pushStart, i.nextReview)}</div>
                </div>
                <button 
-                  onClick={() => { onPromoteTask(i); alert("已插队推送"); refresh(); }} 
+                  onClick={() => handlePromote(i)} 
                   disabled={pending}
                   className={`px-3 py-1 rounded text-xs font-bold border ${pending ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-green-100 text-green-700 border-green-200'}`}
                >
@@ -686,31 +671,79 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
       </div>}
 
       {activeTab==='library' && <div className="space-y-6">
-         <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><h3 className="font-bold mb-2 flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3><textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词，逗号分隔 (如: apple, banana)"/><button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成 (艾宾浩斯)</button></div>
+         <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><h3 className="font-bold mb-2 flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3><textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词，逗号分隔 (如: apple, banana)"/><button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成</button></div>
          <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-slate-300">
            <h3 className="font-bold mb-4">手动添加任务</h3>
            <div className="flex gap-2 mb-3"><button onClick={()=>setNewTaskType('generic')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='generic'?'bg-slate-200 border-slate-400':''}`}>通用任务</button><button onClick={()=>setNewTaskType('english')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='english'?'bg-purple-100 border-purple-400 text-purple-700':''}`}>英语任务</button></div>
-           
            <div className="space-y-3">
-             <div className="flex gap-2"><input className="flex-1 border p-2 rounded" value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)} placeholder="任务名称" /><input className="w-20 border p-2 rounded" type="number" value={newTaskReward} onChange={e=>setNewTaskReward(e.target.value)} placeholder="奖励" /></div>
+             <div className="flex gap-2"><input className="flex-1 border p-2 rounded" value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)} placeholder="任务名称 (必填)" /><input className="w-20 border p-2 rounded" type="number" value={newTaskReward} onChange={e=>setNewTaskReward(e.target.value)} placeholder="奖励" /></div>
              
-             {/* 循环模式选择 */}
              <div className="flex items-center gap-4 text-sm text-slate-600 bg-slate-50 p-2 rounded">
                 <span className="font-bold">循环模式:</span>
-                <label className="flex items-center gap-1"><input type="radio" name="cycle" checked={newTaskCycle==='ebbinghaus'} onChange={()=>setNewTaskCycle('ebbinghaus')}/> 艾宾浩斯 (记忆)</label>
-                <label className="flex items-center gap-1"><input type="radio" name="cycle" checked={newTaskCycle==='daily'} onChange={()=>setNewTaskCycle('daily')}/> 每日打卡 (习惯)</label>
+                <label className="flex items-center gap-1"><input type="radio" name="cycle" checked={newTaskCycle==='ebbinghaus'} onChange={()=>setNewTaskCycle('ebbinghaus')}/> 艾宾浩斯</label>
+                <label className="flex items-center gap-1"><input type="radio" name="cycle" checked={newTaskCycle==='daily'} onChange={()=>setNewTaskCycle('daily')}/> 每日打卡</label>
              </div>
 
              {newTaskType === 'english' && <div className="bg-purple-50 p-3 rounded border border-purple-100 space-y-2"><div className="flex gap-2"><input className="flex-1 border p-2 rounded text-sm" placeholder="英文单词" value={flashcardWord} onChange={e=>setFlashcardWord(e.target.value)} /><input className="flex-1 border p-2 rounded text-sm" placeholder="中文释义" value={flashcardTrans} onChange={e=>setFlashcardTrans(e.target.value)} /></div><input className="w-full border p-2 rounded text-sm" placeholder="图片 URL" value={flashcardImg} onChange={e=>setFlashcardImg(e.target.value)} /><input className="w-full border p-2 rounded text-sm" placeholder="发音 URL" value={flashcardAudio} onChange={e=>setFlashcardAudio(e.target.value)} /></div>}
              {newTaskType === 'generic' && <input className="w-full border p-2 rounded text-sm" placeholder="图片 URL (选填)" value={flashcardImg} onChange={e=>setFlashcardImg(e.target.value)} />}
-             
              <div className="flex gap-2"><button onClick={handleAddToLibrary} className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-bold">加入计划库</button><button onClick={handlePush} className="flex-1 bg-slate-800 text-white py-3 rounded-lg font-bold">立即推送</button></div>
            </div>
          </div>
+         <div className="bg-white p-4 rounded-xl shadow-sm"><div className="flex justify-between items-center mb-4"><h3 className="font-bold">任务库 ({sortedLibrary.length})</h3><div className="flex gap-2"><button onClick={handleExport} className="text-xs text-blue-600">导出CSV</button></div></div><div className="space-y-2 max-h-[300px] overflow-y-auto">{sortedLibrary.map(i=>(<div key={i.id} className="flex justify-between border-b p-2 items-center"><div><div className="font-bold text-sm">{i.title}</div><div className="text-xs text-slate-400">Lv.{i.memoryLevel}</div></div><button onClick={()=>onManageLibrary('del',i.id)} className="text-red-400 p-2"><Trash2 size={16}/></button></div>))}</div></div>
       </div>}
 
       {activeTab==='theme' && <div className="bg-white p-4 rounded shadow space-y-4">
-        <h3 className="font-bold flex items-center gap-2"><Palette size={18}/> 主题定制 (支持上传)</h3>
+        <h3 className="font-bold flex items-center gap-2"><Palette size={18}/> 主题定制</h3>
+        
+        {/* 主题选择器 */}
+        <div className="p-3 bg-slate-50 rounded border">
+            <label className="text-sm font-bold mb-2 block">界面风格</label>
+            <div className="flex gap-2">
+                <button onClick={()=>handleThemeChange('cosmic')} className={`flex-1 py-2 rounded border text-sm font-bold ${themeId==='cosmic'?'bg-blue-600 text-white':'bg-white'}`}>宇宙护卫队</button>
+                <button onClick={()=>handleThemeChange('pokemon')} className={`flex-1 py-2 rounded border text-sm font-bold ${themeId==='pokemon'?'bg-yellow-400 text-black border-yellow-500':'bg-white'}`}>宝可梦大师</button>
+            </div>
+        </div>
+
+        {/* 🔮 新增：形态进化配置 */}
+        <div className="border-b pb-4 mb-4">
+            <div className="flex justify-between items-center mb-2">
+                <label className="text-xs text-slate-500 font-bold">🔮 进化阶段 (支持上传图片)</label>
+                <button onClick={addStage} className="text-blue-600 text-xs flex gap-1"><PlusCircle size={14}/> 添加阶段</button>
+            </div>
+            {levelStages.map((stage, idx) => (
+                <div key={idx} className="flex gap-2 mb-2 items-center bg-slate-50 p-2 rounded">
+                    <span className="text-[10px] w-8 text-slate-400">Lv.{stage.minLevel}</span>
+                    <input 
+                        type="number" 
+                        className="w-12 border p-1 rounded text-xs text-center" 
+                        value={stage.minLevel}
+                        disabled={idx === 0} 
+                        onChange={(e) => updateStage(idx, 'minLevel', e.target.value)}
+                    />
+                    <input 
+                        className="flex-1 border p-1 rounded text-xs" 
+                        value={stage.name}
+                        onChange={(e) => updateStage(idx, 'name', e.target.value)}
+                        placeholder="阶段名称"
+                    />
+                    {/* 图片上传 */}
+                    <div className="relative">
+                        <button className={`p-1 rounded hover:bg-slate-200 ${stage.image ? 'bg-green-100 text-green-600' : 'bg-slate-100'}`} onClick={() => stageInputRefs.current[idx].click()}>
+                           <Upload size={14}/>
+                        </button>
+                        <input 
+                            type="file" 
+                            className="hidden" 
+                            ref={el => stageInputRefs.current[idx] = el} 
+                            onChange={(e) => handleUpload(e, 'stage', idx)}
+                        />
+                    </div>
+                    {/* 删除按钮 */}
+                    {idx > 0 && <button onClick={() => removeStage(idx)} className="text-red-400"><MinusCircle size={14}/></button>}
+                </div>
+            ))}
+        </div>
+
         <div className="space-y-4">
            <div><label className="text-xs text-slate-500 block mb-1">队长头像</label><div className="flex gap-2"><input className="border flex-1 p-2 rounded text-sm" value={themeMascot} onChange={e=>setThemeMascot(e.target.value)} placeholder="输入URL 或 上传"/><button disabled={uploading} onClick={()=>mascotInputRef.current.click()} className="bg-slate-200 px-3 rounded"><Upload size={16}/></button></div><input type="file" ref={mascotInputRef} className="hidden" accept="image/*" onChange={(e)=>handleUpload(e,'mascot')}/>{themeMascot && <img src={proxifyUrl(themeMascot)} className="w-10 h-10 mt-2 rounded object-cover"/>}</div>
            <div><label className="text-xs text-slate-500 block mb-1">背景图片</label><div className="flex gap-2"><input className="border flex-1 p-2 rounded text-sm" value={themeBg} onChange={e=>setThemeBg(e.target.value)} placeholder="输入URL 或 上传"/><button disabled={uploading} onClick={()=>bgInputRef.current.click()} className="bg-slate-200 px-3 rounded"><Upload size={16}/></button></div><input type="file" ref={bgInputRef} className="hidden" accept="image/*" onChange={(e)=>handleUpload(e,'bg')}/>{themeBg && <img src={proxifyUrl(themeBg)} className="w-20 h-10 mt-2 rounded object-cover"/>}</div>
@@ -762,19 +795,7 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
 
     return (
         <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4">
-        <div className="bg-white text-slate-900 w-full max-w-md landscape:max-w-4xl rounded-3xl overflow-hidden shadow-2xl relative flex flex-col landscape:flex-row max-h-[90vh]">
-            <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full z-10"><XCircle /></button>
-            <div className="w-full h-64 landscape:w-1/2 landscape:h-full bg-slate-100 flex items-center justify-center overflow-hidden"><img src={imageUrl} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none'}}/></div>
-            <div className="p-8 text-center flex-1 overflow-y-auto landscape:w-1/2 landscape:flex landscape:flex-col landscape:justify-center">
-            {step==='success' ? <div className="py-8"><Trophy size={80} className="mx-auto text-yellow-400"/><h2 className="text-3xl font-bold">挑战成功</h2></div> : <>
-                <h1 className="text-6xl font-bold text-blue-600 mb-4">{word}</h1>
-                <button onClick={()=>playTaskAudio(word, task.flashcardData?.audio)} className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full mb-8"><Headphones size={20}/> 听发音</button>
-                {step==='learning' ? <button onClick={handleGoTeach} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-xl">教爷爷奶奶</button> : <div className="bg-slate-50 p-4 rounded-xl"><div className="flex justify-between items-center mb-2"><span className="text-xl font-mono font-bold">{mathQ.a} x {mathQ.b} = ?</span><input type="number" className="w-20 border rounded p-2 text-center" value={mathAns} onChange={e=>setMathAns(e.target.value)}/></div><button onClick={checkMath} className="w-full bg-green-500 text-white py-2 rounded font-bold">家长确认</button></div>}
-            </>}
-            </div>
-        </div>
-        </div>
-    );
+        <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative flex flex-col"><button onClick={onClose} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full z-10"><XCircle /></button><div className="w-full h-64 bg-slate-100 flex items-center justify-center overflow-hidden"><img src={imageUrl} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none'}}/></div><div className="p-8 text-center flex-1 overflow-y-auto">{step==='success' ? <div className="py-8"><Trophy size={80} className="mx-auto text-yellow-400"/><h2 className="text-3xl font-bold">挑战成功</h2></div> : <><h1 className="text-6xl font-bold text-blue-600 mb-4">{word}</h1><button onClick={()=>playTaskAudio(word, task.flashcardData?.audio)} className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full mb-8"><Headphones size={20}/> 听发音</button>{step==='learning' ? <button onClick={handleGoTeach} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-xl">教爷爷奶奶</button> : <div className="bg-slate-50 p-4 rounded-xl"><div className="flex justify-between items-center mb-2"><span className="text-xl font-mono font-bold">{mathQ.a} x {mathQ.b} = ?</span><input type="number" className="w-20 border rounded p-2 text-center" value={mathAns} onChange={e=>setMathAns(e.target.value)}/></div><button onClick={checkMath} className="w-full bg-green-500 text-white py-2 rounded font-bold">家长确认</button></div>}</>}</div></div></div>);
 };
 
 const RewardModal = ({ rewards, onClose }) => (<div onClick={onClose} className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/95"><div className="bg-slate-800 border-4 border-yellow-400 p-8 rounded-3xl text-center"><h2 className="text-3xl text-white font-black mb-4">任务完成!</h2><div className="text-yellow-400 text-xl font-bold mb-8">+{rewards.coins} 能量石</div><button className="bg-yellow-500 w-full py-4 rounded-xl font-bold">开心收下</button></div></div>);
@@ -817,37 +838,36 @@ export default function App() {
 
   const persist = (newData) => { setData(newData); CloudAPI.sync(session.uid, newData, session.mode); };
   
-  // 强制同步：把当前本地数据推送到云端 (解决手机端无法同步的问题)
   const handleForceSync = async () => {
     if(!session) return;
     if(confirm("确定要将当前设备的本地数据覆盖到云端吗？")) {
-       await CloudAPI.sync(session.uid, data, 'force'); // 强制云端同步
+       await CloudAPI.sync(session.uid, data, 'force');
        alert("已强制同步到云端！");
     }
   };
   
-  // 核心升级：心跳同步 (5秒一次) + 提醒音效
+  // 自动心跳同步 (5秒一次) + 提醒音效
   useEffect(() => {
     if (!session || session.mode !== 'cloud') return;
     const interval = setInterval(async () => {
        const cloudData = await CloudAPI.fetchData(session.uid);
-       // 检查 nudge 变化 (播放提醒)
        if (cloudData?.user?.nudge && cloudData.user.nudge !== data?.user?.nudge) {
            console.log("Nudge received!");
-           playSystemSound('patrol'); 
+           playSystemSound('nudge'); 
+           alert("🔔 家长发来提醒：快去完成任务吧！");
        }
-       // 检查数据是否有变化
        if (cloudData && JSON.stringify(cloudData.tasks) !== JSON.stringify(data.tasks)) {
            console.log("Syncing new tasks...");
-           setData(prev => ({ ...cloudData })); // 强制更新
+           setData(prev => ({ ...prev, tasks: cloudData.tasks })); 
+           playSystemSound('patrol');
        }
     }, 5000); 
     return () => clearInterval(interval);
-  }, [session, data]); // 依赖 data 以便对比
+  }, [session, data]);
 
   const handleNudgeKid = () => {
      const newData = { ...data };
-     newData.user.nudge = Date.now(); // 更新时间戳触发提醒
+     newData.user.nudge = Date.now();
      persist(newData);
      alert("已发送提醒！孩子设备将播放提示音。");
   };
@@ -858,20 +878,16 @@ export default function App() {
     if(t) { t.status = 'completed'; t.completedAt = Date.now(); }
     newData.user.coins += task.reward; newData.user.xp += task.reward;
     
-    // 循环任务逻辑 (Cycle Mode)
+    // 循环任务逻辑
     if (task.cycleMode === 'daily' && task.libraryId) {
        const libItem = newData.library.find(i => i.id === task.libraryId);
        if (libItem) {
-          // 每日任务不升级，重置到明天同一时间
-          const tomorrow = new Date();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          // 保持原定小时
-          const originalHour = new Date(libItem.nextReview).getHours();
+          const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+          const originalHour = libItem.nextReview ? new Date(libItem.nextReview).getHours() : 19;
           tomorrow.setHours(originalHour, 0, 0, 0);
           libItem.nextReview = tomorrow.getTime();
        }
     } else if (task.libraryId) {
-        // 艾宾浩斯升级
         const item = newData.library.find(i => i.id === task.libraryId);
         if (item) {
            const lv = item.memoryLevel || 0; const nextLv = Math.min(lv + 1, 6);
@@ -879,7 +895,6 @@ export default function App() {
            item.memoryLevel = nextLv; item.nextReview = nextDate.getTime();
         }
     }
-
     persist(newData);
     setActiveFlashcardTask(null);
     setRewardData({ coins: task.reward, xp: task.reward });
@@ -889,7 +904,6 @@ export default function App() {
     setIsPatrolling(true); speak("雷达启动");
     setTimeout(() => {
       const newData = { ...data };
-      // 优先从库里捞 (符合时间窗口的)
       const now = Date.now();
       const candidate = newData.library.find(i => i.nextReview <= now && !newData.tasks.find(t=>t.libraryId===i.id && t.status==='pending'));
       
@@ -909,7 +923,7 @@ export default function App() {
   const handleAddTask = (item) => { const newData={...data}; newData.tasks.push({...item, id:generateId(), status:'pending'}); persist(newData); };
   const handleDeleteTask = (id) => { const newData={...data}; newData.tasks=newData.tasks.filter(t=>t.id!==id); persist(newData); };
   const handleUpdateProfile = (u) => { const newData={...data}; newData.user={...newData.user,...u}; persist(newData); };
-  
+  // 核心修复：提升状态
   const handlePromoteTask = (libraryItem) => {
     const newData = { ...data };
     const existing = newData.tasks.find(t => t.libraryId === libraryItem.id && t.status === 'pending');
