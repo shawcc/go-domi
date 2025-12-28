@@ -101,7 +101,7 @@ class ErrorBoundary extends React.Component {
 // ==========================================
 // --- 2. 数据引擎 ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_data_v24_custom_levels'; 
+const STORAGE_KEY = 'go_domi_data_v24_mega_library'; 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
 const CRYSTAL_STAGES = [
@@ -242,6 +242,7 @@ const PUZZLE_CONFIG = { totalPieces: 9, image: "https://images.unsplash.com/phot
 
 // 🌟 精选词库：稳定的 Unsplash 图片链接
 const SYSTEM_DICTIONARY = {
+  // 动物
   'cat': { cn: '猫', img: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&q=80' },
   'dog': { cn: '狗', img: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80' },
   'elephant': { cn: '大象', img: 'https://images.unsplash.com/photo-1557050543-4d5f490d49cd?w=400&q=80' },
@@ -282,7 +283,6 @@ const enrichWordTask = (wordInput) => {
   }
 
   // 2. 如果没有，留空让家长配置
-  // 移除AI生成，使用占位
   return { word, translation: '', image: '', audio: '' };
 };
 
@@ -336,7 +336,6 @@ const speak = (text, lang = 'zh-CN') => {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   
-  // 预加载语音（如果列表为空）
   if (window.speechSynthesis.getVoices().length === 0) {
       window.speechSynthesis.onvoiceschanged = () => speak(text, lang);
       return;
@@ -468,6 +467,7 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
                 {taskImage ? <img src={taskImage} className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onLoad={() => setImgLoaded(true)} onError={(e)=>{e.target.style.display='none'; setImgLoaded(true);}} /> : <div className="text-6xl animate-bounce">{isEnglish?"A":"⚔️"}</div>}
             </div>
             
+            {/* 🔊 弹窗内的发音按钮 */}
             {isEnglish && (
                 <button onClick={() => speak(task.flashcardData.word, 'en-US')} className="absolute top-16 right-6 bg-white p-2 rounded-full shadow-md text-blue-600 hover:scale-110 transition-transform">
                     <Volume2 size={24} />
@@ -700,6 +700,15 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
         const newStages = levelStages.filter((_, i) => i !== idx);
         setLevelStages(newStages);
     };
+    
+    // 选择预置词汇
+    const selectPreset = (key) => {
+        const item = SYSTEM_DICTIONARY[key];
+        setFlashcardWord(key);
+        setFlashcardTrans(item.cn);
+        setFlashcardImg(item.img); 
+        setNewTaskType('english');
+    };
 
     const constructTaskData = () => ({
         title: newTaskType === 'english' ? `练习单词: ${flashcardWord}` : newTaskTitle,
@@ -762,6 +771,20 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
       </div>}
 
       {activeTab==='library' && <div className="space-y-6">
+         {/* 精选词库推荐 */}
+         <div className="bg-white p-4 rounded-xl shadow-sm border border-orange-100">
+             <h3 className="font-bold mb-2 flex items-center gap-2 text-orange-800"><Book size={16}/> 推荐词库 (高清图+发音)</h3>
+             <div className="flex gap-2 overflow-x-auto pb-2">
+                 {Object.keys(SYSTEM_DICTIONARY).map(k => (
+                     <button key={k} onClick={() => selectPreset(k)} className="flex flex-col items-center shrink-0 border p-2 rounded hover:bg-orange-50 w-20">
+                         <img src={SYSTEM_DICTIONARY[k].img} className="w-16 h-16 object-cover rounded mb-1 bg-slate-100"/>
+                         <span className="text-xs truncate w-full text-center font-bold">{k}</span>
+                         <span className="text-[10px] text-slate-400">{SYSTEM_DICTIONARY[k].cn}</span>
+                     </button>
+                 ))}
+             </div>
+         </div>
+      
          <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><h3 className="font-bold mb-2 flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3><textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词，逗号分隔 (如: apple, banana)"/><button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成</button></div>
          <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-slate-300">
            <h3 className="font-bold mb-4">手动添加任务</h3>
@@ -878,9 +901,35 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
     const imageUrl = proxifyUrl(task.flashcardData?.image);
     useEffect(() => { if(step==='learning') setTimeout(()=>playTaskAudio(word, task.flashcardData?.audio), 500); }, [step]);
     const checkMath = () => { if(parseInt(mathAns)===mathQ.a*mathQ.b){ setStep('success'); speak("太棒了！"); setTimeout(()=>onComplete(task),2000); } else alert("算错啦"); };
-    const generateMath = () => { const a = Math.floor(Math.random() * 7) + 3; const b = Math.floor(Math.random() * 7) + 3; setMathQ({ a, b }); setMathAns(''); };
-    const handleGoTeach = () => { setStep('challenge'); generateMath(); };
-    return (<div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4"><div className="bg-white text-slate-900 w-full max-w-md landscape:max-w-4xl rounded-3xl overflow-hidden shadow-2xl relative flex flex-col"><button onClick={onClose} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full z-10"><XCircle /></button><div className="w-full h-64 bg-slate-100 flex items-center justify-center overflow-hidden"><img src={imageUrl} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none'}}/></div><div className="p-8 text-center flex-1 overflow-y-auto">{step==='success' ? <div className="py-8"><Trophy size={80} className="mx-auto text-yellow-400"/><h2 className="text-3xl font-bold">挑战成功</h2></div> : <><h1 className="text-6xl font-bold text-blue-600 mb-4">{word}</h1><button onClick={()=>playTaskAudio(word, task.flashcardData?.audio)} className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full mb-8"><Headphones size={20}/> 听发音</button>{step==='learning' ? <button onClick={handleGoTeach} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-xl">教爷爷奶奶</button> : <div className="bg-slate-50 p-4 rounded-xl"><div className="flex justify-between items-center mb-2"><span className="text-xl font-mono font-bold">{mathQ.a} x {mathQ.b} = ?</span><input type="number" className="w-20 border rounded p-2 text-center" value={mathAns} onChange={e=>setMathAns(e.target.value)}/></div><button onClick={checkMath} className="w-full bg-green-500 text-white py-2 rounded font-bold">家长确认</button></div>}</>}</div></div></div>);
+    
+    // 生成乘法题
+    const generateMath = () => {
+      const a = Math.floor(Math.random() * 7) + 3; 
+      const b = Math.floor(Math.random() * 7) + 3;
+      setMathQ({ a, b });
+      setMathAns('');
+    };
+
+    const handleGoTeach = () => {
+       setStep('challenge');
+       generateMath();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4">
+        <div className="bg-white text-slate-900 w-full max-w-md landscape:max-w-4xl rounded-3xl overflow-hidden shadow-2xl relative flex flex-col landscape:flex-row max-h-[90vh]">
+            <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full z-10"><XCircle /></button>
+            <div className="w-full h-64 landscape:w-1/2 landscape:h-full bg-slate-100 flex items-center justify-center overflow-hidden"><img src={imageUrl} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none'}}/></div>
+            <div className="p-8 text-center flex-1 overflow-y-auto landscape:w-1/2 landscape:flex landscape:flex-col landscape:justify-center">
+            {step==='success' ? <div className="py-8"><Trophy size={80} className="mx-auto text-yellow-400"/><h2 className="text-3xl font-bold">挑战成功</h2></div> : <>
+                <h1 className="text-6xl font-bold text-blue-600 mb-4">{word}</h1>
+                <button onClick={()=>playTaskAudio(word, task.flashcardData?.audio)} className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full mb-8"><Headphones size={20}/> 听发音</button>
+                {step==='learning' ? <button onClick={handleGoTeach} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-xl">教爷爷奶奶</button> : <div className="bg-slate-50 p-4 rounded-xl"><div className="flex justify-between items-center mb-2"><span className="text-xl font-mono font-bold">{mathQ.a} x {mathQ.b} = ?</span><input type="number" className="w-20 border rounded p-2 text-center" value={mathAns} onChange={e=>setMathAns(e.target.value)}/></div><button onClick={checkMath} className="w-full bg-green-500 text-white py-2 rounded font-bold">家长确认</button></div>}
+            </>}
+            </div>
+        </div>
+        </div>
+    );
 };
 
 const RewardModal = ({ rewards, onClose }) => (<div onClick={onClose} className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/95"><div className="bg-slate-800 border-4 border-yellow-400 p-8 rounded-3xl text-center"><h2 className="text-3xl text-white font-black mb-4">任务完成!</h2><div className="text-yellow-400 text-xl font-bold mb-8">+{rewards.coins} 能量石</div><button className="bg-yellow-500 w-full py-4 rounded-xl font-bold">开心收下</button></div></div>);
@@ -926,7 +975,7 @@ export default function App() {
   const handleForceSync = async () => {
     if(!session) return;
     if(confirm("确定要将当前设备的本地数据覆盖到云端吗？")) {
-       await CloudAPI.sync(session.uid, data, 'force');
+       await CloudAPI.sync(session.uid, data, 'force'); // 强制云端同步
        alert("已强制同步到云端！");
     }
   };
@@ -961,14 +1010,35 @@ export default function App() {
     const newData = { ...data };
     const t = newData.tasks.find(x => x.id === task.id);
     if(t) { t.status = 'completed'; t.completedAt = Date.now(); }
-    newData.user.coins += task.reward; newData.user.xp += task.reward;
+    
+    // 1. 结算奖励
+    newData.user.coins += task.reward; 
+    newData.user.xp += task.reward;
+    
+    // 2. 升级逻辑 (Level Up Logic)
+    // 规则：当前等级 N，升级需要 N * 100 经验。经验溢出部分带入下一级。
+    let xpNeeded = newData.user.level * 100;
+    let isLevelUp = false;
+    
+    // 使用 while 循环支持一次升多级（处理积压经验）
+    while (newData.user.xp >= xpNeeded) {
+       newData.user.xp -= xpNeeded;
+       newData.user.level += 1;
+       xpNeeded = newData.user.level * 100;
+       isLevelUp = true;
+    }
+    
+    if (isLevelUp) {
+        playSystemSound('levelup');
+        // 可以加个简单的 alert 或者 speak
+        setTimeout(() => speak(`恭喜升级到 ${newData.user.level} 级！`), 500);
+    }
     
     // 循环任务逻辑
     if (task.cycleMode === 'daily' && task.libraryId) {
        const libItem = newData.library.find(i => i.id === task.libraryId);
        if (libItem) {
           const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-          // 保持原定小时，若无则默认 19 点
           const originalHour = libItem.nextReview ? new Date(libItem.nextReview).getHours() : 19;
           tomorrow.setHours(originalHour, 0, 0, 0);
           libItem.nextReview = tomorrow.getTime();
