@@ -12,6 +12,7 @@ import {
 // --- 0. 基础配置 ---
 // ==========================================
 
+// ⚠️ 生产环境配置: 
 const SERVER_IP = 'http://43.143.74.76:3000'; 
 const BACKEND_HOST = '43.143.74.76:3000';
 
@@ -49,6 +50,7 @@ const GlobalStyles = () => (
   `}</style>
 );
 
+// --- 核心工具：智能 URL 处理 ---
 const getApiEndpoint = (path, forceDirect = false) => {
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
      return SERVER_IP ? `${SERVER_IP}${path}` : path;
@@ -59,7 +61,7 @@ const getApiEndpoint = (path, forceDirect = false) => {
 
 const proxifyUrl = (url) => {
   if (!url) return '';
-  if (url.startsWith('data:')) return url; 
+  if (url.startsWith('data:') || url.startsWith('blob:')) return url; // 支持 Base64 和 Blob 预览
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) return url;
   if (url.includes(BACKEND_HOST)) {
     try { return new URL(url).pathname; } catch (e) { return url; }
@@ -85,7 +87,7 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-6 text-center">
-        <h2 className="text-xl font-bold mb-2 text-red-400">系统错误</h2>
+        <h2 className="text-xl font-bold mb-2 text-red-400">基地系统遭遇干扰</h2>
         <p className="text-xs text-slate-500 mb-6 max-w-xs break-all bg-slate-800 p-2 rounded">{this.state.error?.toString()}</p>
         <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-red-600 px-6 py-3 rounded-full font-bold shadow-lg flex items-center gap-2 mx-auto">
            <RefreshCw size={18}/> 重置系统 (清除缓存)
@@ -99,7 +101,7 @@ class ErrorBoundary extends React.Component {
 // ==========================================
 // --- 2. 数据引擎 ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_data_v21_fix_final'; 
+const STORAGE_KEY = 'go_domi_data_v21_custom_levels'; 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
 const CRYSTAL_STAGES = [
@@ -428,7 +430,7 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
           <div className={`${currentTheme.primary} text-white p-3 flex items-center justify-center gap-2 animate-pulse`}><Siren size={20} /> <h2 className="text-lg font-black">紧急任务</h2></div>
           <div className="p-6 flex flex-col items-center text-center">
             <div className="mb-4 w-40 h-40 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-slate-200 shadow-inner">
-                {taskImage ? <img src={taskImage} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none'}} /> : <div className="text-4xl">⚔️</div>}
+                {taskImage ? <img src={taskImage} className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onError={(e)=>{e.target.style.display='none'}} /> : <div className="text-4xl">⚔️</div>}
             </div>
             <div className="space-y-1 mb-6">
                <div className="text-xs font-bold uppercase opacity-60">来自 {assistantName} 的信号</div>
@@ -447,11 +449,9 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
 const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, toggleParentMode, processingTasks, hiddenTaskIds, onStartPatrol, isPatrolling, isPlaying, onOpenCollection, connectionMode, onForceSync, onLogout }) => {
   const themeId = userProfile.theme || 'cosmic';
   const currentTheme = THEMES[themeId] || THEMES.cosmic;
-  
   const mascotImg = proxifyUrl(userProfile.themeConfig?.mascot || currentTheme.mascot);
   const bgImg = proxifyUrl(userProfile.themeConfig?.background || currentTheme.backgroundImage);
   const progressPercent = Math.min((userProfile.xp / (userProfile.level*100)) * 100, 100);
-
   const headerBgClass = themeId === 'pokemon' ? 'bg-white/60 text-slate-800' : 'bg-black/20 text-white';
 
   return (
@@ -560,9 +560,23 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const handleUpload = async (e, type, idx) => {
        const file = e.target.files[0];
        if(!file) return;
+       
+       // 1. 本地即时预览 (Local Preview)
+       const localPreview = URL.createObjectURL(file);
+       if (type === 'mascot') setThemeMascot(localPreview);
+       else if (type === 'bg') setThemeBg(localPreview);
+       else if (type === 'stage' && idx !== undefined) {
+           const newStages = [...levelStages];
+           newStages[idx].image = localPreview;
+           setLevelStages(newStages);
+       }
+       
        setUploading(true);
        try {
+         // 2. 后端上传
          const url = await CloudAPI.upload(file);
+         
+         // 3. 替换为真实 URL
          if (type === 'mascot') setThemeMascot(url);
          else if (type === 'bg') setThemeBg(url);
          else if (type === 'stage' && idx !== undefined) {
@@ -571,7 +585,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
              setLevelStages(newStages);
          }
          alert("上传成功!");
-       } catch (err) { alert(err.message); } finally { setUploading(false); }
+       } catch (err) { alert("服务器上传失败，使用本地预览模式"); } finally { setUploading(false); }
     };
 
     const handleThemeChange = (newTheme) => {
@@ -622,7 +636,6 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const handleAddToLibrary = (e) => { e.preventDefault(); onManageLibrary('add', { ...constructTaskData(), memoryLevel: 0, nextReview: Date.now() }); alert('已入库'); refresh(); };
     const handleBatchAddWords = () => { if (!batchWords.trim()) return; const words = batchWords.split(/[,，\n]/).map(w => w.trim()).filter(w => w); let count = 0; words.forEach(word => { const enrichedData = enrichWordTask(word); onManageLibrary('add', { title: `练习单词: ${enrichedData.word}`, type: 'english', reward: 20, flashcardData: enrichedData, memoryLevel: 0, nextReview: Date.now(), cycleMode: 'ebbinghaus' }); count++; }); alert(`成功生成 ${count} 个！`); setBatchWords(''); refresh(); };
     const handleSaveConfig = () => { 
-        // 关键：保存时把 levelStages 一起存进去
         onUpdateProfile({ 
             taskProbabilities, 
             pushStartHour: parseInt(pushStart), 
@@ -750,7 +763,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
            <div><label className="text-xs text-slate-500">助手名字</label><input className="border w-full p-2 rounded" value={assistantName} onChange={e=>setAssistantName(e.target.value)} placeholder="小雨点"/></div>
         </div>
         <button onClick={handleSaveTheme} className={`w-full py-3 rounded font-bold transition-all ${saveStatus==='theme' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}`}>
-          {saveStatus==='theme' ? '✅ 已保存' : '应用主题'}
+          {saveStatus==='theme' ? '✅ 保存所有设置' : '保存设置'}
         </button>
       </div>}
 
@@ -779,23 +792,9 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
     const imageUrl = proxifyUrl(task.flashcardData?.image);
     useEffect(() => { if(step==='learning') setTimeout(()=>playTaskAudio(word, task.flashcardData?.audio), 500); }, [step]);
     const checkMath = () => { if(parseInt(mathAns)===mathQ.a*mathQ.b){ setStep('success'); speak("太棒了！"); setTimeout(()=>onComplete(task),2000); } else alert("算错啦"); };
-    
-    // 生成乘法题
-    const generateMath = () => {
-      const a = Math.floor(Math.random() * 7) + 3; 
-      const b = Math.floor(Math.random() * 7) + 3;
-      setMathQ({ a, b });
-      setMathAns('');
-    };
-
-    const handleGoTeach = () => {
-       setStep('challenge');
-       generateMath();
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4">
-        <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative flex flex-col"><button onClick={onClose} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full z-10"><XCircle /></button><div className="w-full h-64 bg-slate-100 flex items-center justify-center overflow-hidden"><img src={imageUrl} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none'}}/></div><div className="p-8 text-center flex-1 overflow-y-auto">{step==='success' ? <div className="py-8"><Trophy size={80} className="mx-auto text-yellow-400"/><h2 className="text-3xl font-bold">挑战成功</h2></div> : <><h1 className="text-6xl font-bold text-blue-600 mb-4">{word}</h1><button onClick={()=>playTaskAudio(word, task.flashcardData?.audio)} className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full mb-8"><Headphones size={20}/> 听发音</button>{step==='learning' ? <button onClick={handleGoTeach} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-xl">教爷爷奶奶</button> : <div className="bg-slate-50 p-4 rounded-xl"><div className="flex justify-between items-center mb-2"><span className="text-xl font-mono font-bold">{mathQ.a} x {mathQ.b} = ?</span><input type="number" className="w-20 border rounded p-2 text-center" value={mathAns} onChange={e=>setMathAns(e.target.value)}/></div><button onClick={checkMath} className="w-full bg-green-500 text-white py-2 rounded font-bold">家长确认</button></div>}</>}</div></div></div>);
+    const generateMath = () => { const a = Math.floor(Math.random() * 7) + 3; const b = Math.floor(Math.random() * 7) + 3; setMathQ({ a, b }); setMathAns(''); };
+    const handleGoTeach = () => { setStep('challenge'); generateMath(); };
+    return (<div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4"><div className="bg-white text-slate-900 w-full max-w-md landscape:max-w-4xl rounded-3xl overflow-hidden shadow-2xl relative flex flex-col"><button onClick={onClose} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full z-10"><XCircle /></button><div className="w-full h-64 bg-slate-100 flex items-center justify-center overflow-hidden"><img src={imageUrl} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none'}}/></div><div className="p-8 text-center flex-1 overflow-y-auto">{step==='success' ? <div className="py-8"><Trophy size={80} className="mx-auto text-yellow-400"/><h2 className="text-3xl font-bold">挑战成功</h2></div> : <><h1 className="text-6xl font-bold text-blue-600 mb-4">{word}</h1><button onClick={()=>playTaskAudio(word, task.flashcardData?.audio)} className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full mb-8"><Headphones size={20}/> 听发音</button>{step==='learning' ? <button onClick={handleGoTeach} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-xl">教爷爷奶奶</button> : <div className="bg-slate-50 p-4 rounded-xl"><div className="flex justify-between items-center mb-2"><span className="text-xl font-mono font-bold">{mathQ.a} x {mathQ.b} = ?</span><input type="number" className="w-20 border rounded p-2 text-center" value={mathAns} onChange={e=>setMathAns(e.target.value)}/></div><button onClick={checkMath} className="w-full bg-green-500 text-white py-2 rounded font-bold">家长确认</button></div>}</>}</div></div></div>);
 };
 
 const RewardModal = ({ rewards, onClose }) => (<div onClick={onClose} className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/95"><div className="bg-slate-800 border-4 border-yellow-400 p-8 rounded-3xl text-center"><h2 className="text-3xl text-white font-black mb-4">任务完成!</h2><div className="text-yellow-400 text-xl font-bold mb-8">+{rewards.coins} 能量石</div><button className="bg-yellow-500 w-full py-4 rounded-xl font-bold">开心收下</button></div></div>);
@@ -845,56 +844,12 @@ export default function App() {
        alert("已强制同步到云端！");
     }
   };
-  
-  // 自动心跳同步 (5秒一次) + 提醒音效
-  useEffect(() => {
-    if (!session || session.mode !== 'cloud') return;
-    const interval = setInterval(async () => {
-       const cloudData = await CloudAPI.fetchData(session.uid);
-       if (cloudData?.user?.nudge && cloudData.user.nudge !== data?.user?.nudge) {
-           console.log("Nudge received!");
-           playSystemSound('nudge'); 
-           alert("🔔 家长发来提醒：快去完成任务吧！");
-       }
-       if (cloudData && JSON.stringify(cloudData.tasks) !== JSON.stringify(data.tasks)) {
-           console.log("Syncing new tasks...");
-           setData(prev => ({ ...prev, tasks: cloudData.tasks })); 
-           playSystemSound('patrol');
-       }
-    }, 5000); 
-    return () => clearInterval(interval);
-  }, [session, data]);
-
-  const handleNudgeKid = () => {
-     const newData = { ...data };
-     newData.user.nudge = Date.now();
-     persist(newData);
-     alert("已发送提醒！孩子设备将播放提示音。");
-  };
 
   const handleComplete = (task) => {
     const newData = { ...data };
     const t = newData.tasks.find(x => x.id === task.id);
     if(t) { t.status = 'completed'; t.completedAt = Date.now(); }
     newData.user.coins += task.reward; newData.user.xp += task.reward;
-    
-    // 循环任务逻辑
-    if (task.cycleMode === 'daily' && task.libraryId) {
-       const libItem = newData.library.find(i => i.id === task.libraryId);
-       if (libItem) {
-          const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-          const originalHour = libItem.nextReview ? new Date(libItem.nextReview).getHours() : 19;
-          tomorrow.setHours(originalHour, 0, 0, 0);
-          libItem.nextReview = tomorrow.getTime();
-       }
-    } else if (task.libraryId) {
-        const item = newData.library.find(i => i.id === task.libraryId);
-        if (item) {
-           const lv = item.memoryLevel || 0; const nextLv = Math.min(lv + 1, 6);
-           const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + REVIEW_INTERVALS[nextLv]); nextDate.setHours(19,0,0,0);
-           item.memoryLevel = nextLv; item.nextReview = nextDate.getTime();
-        }
-    }
     persist(newData);
     setActiveFlashcardTask(null);
     setRewardData({ coins: task.reward, xp: task.reward });
@@ -904,18 +859,10 @@ export default function App() {
     setIsPatrolling(true); speak("雷达启动");
     setTimeout(() => {
       const newData = { ...data };
-      const now = Date.now();
-      const candidate = newData.library.find(i => i.nextReview <= now && !newData.tasks.find(t=>t.libraryId===i.id && t.status==='pending'));
-      
-      if(candidate) {
-          newData.tasks.push({...candidate, id: generateId(), status:'pending', createdAt: Date.now(), libraryId: candidate.id});
-          speak("发现计划任务！");
-      } else { 
-          const w = enrichWordTask('random'); 
-          newData.tasks.push({id:generateId(), title:`练习:${w.word}`, type:'english', reward:15, flashcardData:w, status:'pending', createdAt:Date.now()}); 
-          speak("发现随机任务！");
-      }
-      persist(newData); setIsPatrolling(false);
+      const candidate = newData.library.find(i => !newData.tasks.find(t=>t.libraryId===i.id && t.status==='pending'));
+      if(candidate) newData.tasks.push({...candidate, id: generateId(), status:'pending', createdAt: Date.now(), libraryId: candidate.id});
+      else { const w = enrichWordTask('random'); newData.tasks.push({id:generateId(), title:`练习:${w.word}`, type:'english', reward:15, flashcardData:w, status:'pending', createdAt:Date.now()}); }
+      persist(newData); setIsPatrolling(false); speak("发现任务");
     }, 2000);
   };
 
@@ -961,7 +908,7 @@ export default function App() {
           onForceSync={handleForceSync}
           onLogout={handleLogout}
         />
-        {isParentMode && <ParentDashboard userProfile={data.user} tasks={data.tasks} libraryItems={data.library} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} onUpdateProfile={handleUpdateProfile} onManageLibrary={handleManageLibrary} onClose={() => setIsParentMode(false)} onDataChange={() => setData(LocalDB.get())} sessionUid={session.uid} onForceSync={handleForceSync} onPromoteTask={handlePromoteTask} onNudgeKid={handleNudgeKid} />}
+        {isParentMode && <ParentDashboard userProfile={data.user} tasks={data.tasks} libraryItems={data.library} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} onUpdateProfile={handleUpdateProfile} onManageLibrary={handleManageLibrary} onClose={() => setIsParentMode(false)} onDataChange={() => setData(LocalDB.get())} sessionUid={session.uid} onForceSync={handleForceSync} onPromoteTask={handlePromoteTask} />}
         {activeFlashcardTask && <FlashcardGame task={activeFlashcardTask} onClose={() => setActiveFlashcardTask(null)} onComplete={handleComplete} />}
         {rewardData && <RewardModal rewards={rewardData} onClose={() => setRewardData(null)} />}
         {showCollection && <CollectionModal collection={data.collection || {}} onClose={() => setShowCollection(false)} />}
