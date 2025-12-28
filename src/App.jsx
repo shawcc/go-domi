@@ -59,20 +59,12 @@ const getApiEndpoint = (path, forceDirect = false) => {
   return path;
 };
 
-// 增强版 URL 处理：确保返回安全路径
 const proxifyUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('/')) return url; 
-  
-  // 本地调试模式：允许 HTTP 直连
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) return url;
-  
-  // 线上生产模式：如果包含后端 Host，强制转为相对路径
   if (url.includes(BACKEND_HOST)) {
-    try { 
-        // 提取 /uploads/xxx.jpg
-        return new URL(url).pathname; 
-    } catch (e) { return url; }
+    try { return new URL(url).pathname; } catch (e) { return url; }
   }
   return url;
 };
@@ -109,7 +101,7 @@ class ErrorBoundary extends React.Component {
 // ==========================================
 // --- 2. 数据引擎 ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_data_v21_custom_levels'; 
+const STORAGE_KEY = 'go_domi_data_v22_fix_audio'; 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
 const CRYSTAL_STAGES = [
@@ -229,27 +221,12 @@ const CloudAPI = {
       try { await fetch(getApiEndpoint('/api/sync'), { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username, data }) }); } catch (e) { console.error("Sync failed", e); }
     }
   },
-  // 💎 核心升级：上传后直接返回相对路径
   upload: async (file) => {
-    const endpoint = getApiEndpoint('/api/upload');
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch(endpoint, { method: 'POST', body: formData });
-      if (res.ok) { 
-          const result = await res.json(); 
-          // result.url 是 http://IP/uploads/xxx.jpg
-          // 立即转换为 /uploads/xxx.jpg，确保安全加载
-          try {
-             const urlObj = new URL(result.url);
-             return urlObj.pathname;
-          } catch(e) {
-             return result.url;
-          }
-      }
+      const formData = new FormData(); formData.append('file', file);
+      const res = await fetch(getApiEndpoint('/api/upload'), { method: 'POST', body: formData });
+      if (res.ok) { const result = await res.json(); return result.url; }
     } catch (e) { console.warn("Upload failed", e); }
-    
-    // Fallback: Base64
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => resolve(e.target.result);
@@ -268,13 +245,15 @@ const SYSTEM_DICTIONARY = {
   'head': { cn: '头', img: '/assets/images/head.jpg' }, 
 };
 
+// 修复：移除 audio 的默认生成，防止发音失败
 const enrichWordTask = (wordInput) => {
   const word = wordInput.trim();
   const lowerWord = word.toLowerCase();
   const preset = SYSTEM_DICTIONARY[lowerWord];
   const translation = preset ? preset.cn : ''; 
   const imageUrl = (preset && preset.img) ? preset.img : `https://image.pollinations.ai/prompt/cute cartoon ${word} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${Math.random()}`;
-  const audioUrl = `/assets/audio/${lowerWord}.mp3`;
+  // 移除 audioUrl，强制走 TTS
+  const audioUrl = ''; 
   return { word, translation, image: imageUrl, audio: audioUrl };
 };
 
@@ -317,11 +296,7 @@ const getScheduledTimeDisplay = (pushStart, itemNextReview) => {
    if (itemNextReview > now) {
       return new Date(itemNextReview).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
    }
-   if (now < todayPushStart.getTime()) {
-      return "今天 " + pushStart + ":00 (待调度)"; 
-   } else {
-      return "队列中 (随时)";
-   }
+   return "✅ 队列中 (随时可发)";
 };
 
 const getNextBeijingScheduleTime = (startHour = 19) => { const t = getBeijingTime(); t.setHours(startHour - 8,0,0,0); if(Date.now() >= t.getTime()) t.setDate(t.getDate()+1); return t.getTime(); };
@@ -340,7 +315,7 @@ const speakEnglish = (text) => {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'en-US'; u.rate = 0.9;
+  u.lang = 'en-US'; u.rate = 0.8; // 稍微放慢语速
   window.speechSynthesis.speak(u);
 };
 const playTaskAudio = (text, audioUrl) => {
@@ -348,7 +323,10 @@ const playTaskAudio = (text, audioUrl) => {
     const safeUrl = proxifyUrl(audioUrl);
     const audio = new Audio(safeUrl);
     audio.play().catch(() => speakEnglish(text));
-  } else speakEnglish(text);
+  } else {
+    // 强制 TTS
+    speakEnglish(text);
+  }
 };
 const playSystemSound = (type) => {
    const sounds = {
@@ -385,7 +363,7 @@ const LoginScreen = ({ onLogin }) => {
       <div className="relative z-10 w-full max-w-sm bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V21.1</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V22.0 (修复版)</p>
         {SERVER_IP && (<div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between"><span className="flex gap-2"><Server size={14}/> {SERVER_IP}</span><button onClick={()=>setUseDirect(!useDirect)} className={`text-[10px] px-1 rounded ${useDirect?'bg-red-500 text-white':'text-slate-500'}`}>{useDirect ? '强制直连' : '代理模式'}</button></div>)}
         <form onSubmit={handleSubmit} className="space-y-4"><div className="relative"><User className="absolute left-3 top-3.5 text-slate-400" size={20} /><input type="text" className="w-full bg-slate-900/50 border border-slate-600 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-400" placeholder="特工代号" value={username} onChange={e => setUsername(e.target.value)} /></div><button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2">{loading ? <Loader2 className="animate-spin"/> : "连接基地"}</button></form>
         {errorMsg && <div className="mt-4 p-3 bg-red-900/50 border border-red-500/50 rounded-xl text-red-200 text-xs flex items-start gap-2"><AlertTriangle size={16} className="shrink-0 mt-0.5" /><span>{errorMsg}</span></div>}
@@ -409,7 +387,6 @@ const MainCharacter = ({ themeId, level, onClick, userProfile }) => {
   const [isPoked, setIsPoked] = useState(false);
   const handlePoke = () => { setIsPoked(true); if(onClick) onClick(); setTimeout(() => setIsPoked(false), 500); };
   
-  // 智能合并策略
   const stages = (userProfile?.levelStages && userProfile.levelStages.length > 0) 
                  ? userProfile.levelStages 
                  : (themeId === 'pokemon' ? POKEMON_STAGES : CRYSTAL_STAGES);
@@ -417,7 +394,6 @@ const MainCharacter = ({ themeId, level, onClick, userProfile }) => {
   const currentStage = [...stages].reverse().find(s => level >= s.minLevel) || stages[0];
   const stageIndex = stages.indexOf(currentStage);
   
-  // 安全获取 Icon
   const Icon = STAGE_ICONS[stageIndex % STAGE_ICONS.length] || Hexagon;
   const stageImage = currentStage.image ? proxifyUrl(currentStage.image) : null;
 
@@ -448,6 +424,7 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
   const isEnglish = task.type === 'english';
   const taskImage = proxifyUrl(isEnglish ? task.flashcardData?.image : (task.image || task.flashcardData?.image));
   const assistantName = userProfile?.themeConfig?.assistantName || currentTheme.assistant;
+  const [imgLoaded, setImgLoaded] = useState(false); // 图片加载状态
 
   useEffect(() => { const t = setTimeout(() => { playSystemSound('alert'); const intro = isEnglish ? "英语挑战！" : "紧急任务！"; const content = isEnglish ? "请完成一个单词练习" : task.title; setTimeout(() => speak(`${intro} ${content}`), 1000); }, 300); return () => clearTimeout(t); }, [task]);
   
@@ -456,8 +433,9 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
        <div className={`w-full max-w-sm ${currentTheme.card} rounded-3xl overflow-hidden shadow-2xl relative flex flex-col`}>
           <div className={`${currentTheme.primary} text-white p-3 flex items-center justify-center gap-2 animate-pulse`}><Siren size={20} /> <h2 className="text-lg font-black">紧急任务</h2></div>
           <div className="p-6 flex flex-col items-center text-center">
-            <div className="mb-4 w-40 h-40 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-slate-200 shadow-inner">
-                {taskImage ? <img src={taskImage} className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onError={(e)=>{e.target.style.display='none'}} /> : <div className="text-4xl">⚔️</div>}
+            <div className="mb-4 w-40 h-40 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-slate-200 shadow-inner relative">
+                {!imgLoaded && taskImage && <div className="absolute inset-0 flex items-center justify-center bg-slate-200"><Loader2 className="animate-spin text-slate-400"/></div>}
+                {taskImage ? <img src={taskImage} className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onLoad={() => setImgLoaded(true)} onError={(e)=>{e.target.style.display='none'; setImgLoaded(true);}} /> : <div className="text-4xl">⚔️</div>}
             </div>
             <div className="space-y-1 mb-6">
                <div className="text-xs font-bold uppercase opacity-60">来自 {assistantName} 的信号</div>
@@ -518,7 +496,7 @@ const KidDashboard = ({ userProfile, tasks, onCompleteTask, onPlayFlashcard, tog
 };
 
 const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose, onDeleteTask, onUpdateProfile, onManageLibrary, onDataChange, sessionUid, onForceSync, onPromoteTask, onNudgeKid }) => {
-    const [activeTab, setActiveTab] = useState('library'); 
+    const [activeTab, setActiveTab] = useState('plan'); 
     const [saveStatus, setSaveStatus] = useState(''); 
     
     // Config states
@@ -903,7 +881,7 @@ export default function App() {
   const handleForceSync = async () => {
     if(!session) return;
     if(confirm("确定要将当前设备的本地数据覆盖到云端吗？")) {
-       await CloudAPI.sync(session.uid, data, 'force');
+       await CloudAPI.sync(session.uid, data, 'force'); // 强制云端同步
        alert("已强制同步到云端！");
     }
   };
