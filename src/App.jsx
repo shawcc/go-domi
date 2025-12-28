@@ -5,7 +5,7 @@ import {
   Clock, Gem, Hexagon, Octagon, Triangle, 
   Siren, Sparkles, Mic, Library, Calendar, FileUp, FileDown, Trash2,
   Radar, Flame, Moon, Volume1, Users, ThumbsUp, Image as ImageIcon, Languages, Headphones, ImageOff, Wand2, Search, Calculator, Lock,
-  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe, Info, Play, RotateCw, Bell, Layers, Edit3, PlusCircle, MinusCircle, Book, X
+  Puzzle, BookOpen, Star, Gift, Sliders, LogOut, User, Cloud, WifiOff, RefreshCw, Download, Palette, Upload, Server, Link, AlertTriangle, Signal, Globe, Info, Play, RotateCw, Bell, Layers, Edit3, PlusCircle, MinusCircle, Book, X, FileText
 } from 'lucide-react';
 
 // ==========================================
@@ -242,30 +242,33 @@ const PUZZLE_CONFIG = { totalPieces: 9, image: "https://images.unsplash.com/phot
 
 // 🌟 精选词库：稳定的 Unsplash 图片链接
 const SYSTEM_DICTIONARY = {
-  // 动物
   'cat': { cn: '猫', img: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&q=80' },
   'dog': { cn: '狗', img: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80' },
   'elephant': { cn: '大象', img: 'https://images.unsplash.com/photo-1557050543-4d5f490d49cd?w=400&q=80' },
   'lion': { cn: '狮子', img: 'https://images.unsplash.com/photo-1546182990-dced71b4827f?w=400&q=80' },
   'bird': { cn: '鸟', img: 'https://images.unsplash.com/photo-1444464666168-49d633b86797?w=400&q=80' },
   'fish': { cn: '鱼', img: 'https://images.unsplash.com/photo-1524704654690-b56c05c78a00?w=400&q=80' },
-  
-  // 水果/食物
   'apple': { cn: '苹果', img: 'https://images.unsplash.com/photo-1570913149827-d2ac84ab3f9a?w=400&q=80' },
   'banana': { cn: '香蕉', img: 'https://images.unsplash.com/photo-1571771896338-a3d481609fcd?w=400&q=80' },
   'orange': { cn: '橙子', img: 'https://images.unsplash.com/photo-1582979512210-99b6a5338509?w=400&q=80' },
   'ice cream': { cn: '冰淇淋', img: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=400&q=80' },
-  
-  // 自然/交通
   'flower': { cn: '花', img: 'https://images.unsplash.com/photo-1560717789-0ac7c58ac90a?w=400&q=80' },
   'tree': { cn: '树', img: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=400&q=80' },
   'car': { cn: '汽车', img: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=400&q=80' },
   'bus': { cn: '公交车', img: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=400&q=80' },
   'airplane': { cn: '飞机', img: 'https://images.unsplash.com/photo-1559087867-ce4c91325525?w=400&q=80' },
-  
-  // 身体
   'head': { cn: '头', img: 'https://images.unsplash.com/photo-1531123414780-f74242c2b052?w=400&q=80' },
   'hand': { cn: '手', img: 'https://images.unsplash.com/photo-1466695108335-44674aa2058b?w=400&q=80' },
+};
+
+// 🌟 海量预置词库 + 智能图片生成器 (Seed保证一致性)
+const getImgUrl = (keyword) => {
+    let hash = 0;
+    for (let i = 0; i < keyword.length; i++) {
+        hash = keyword.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const seed = Math.abs(hash);
+    return `https://image.pollinations.ai/prompt/cute cartoon ${keyword} minimalist vector illustration for children education, white background?width=400&height=300&nologo=true&seed=${seed}`;
 };
 
 const enrichWordTask = (wordInput) => {
@@ -278,12 +281,13 @@ const enrichWordTask = (wordInput) => {
           word, 
           translation: SYSTEM_DICTIONARY[lowerWord].cn, 
           image: SYSTEM_DICTIONARY[lowerWord].img, 
-          audio: '' // 强制使用 TTS
+          audio: '' 
       };
   }
 
-  // 2. 如果没有，留空让家长配置
-  return { word, translation: '', image: '', audio: '' };
+  // 2. 自动生成图片 (带缓存Seed)
+  const imageUrl = getImgUrl(word);
+  return { word, translation: '', image: imageUrl, audio: '' };
 };
 
 const THEMES = {
@@ -353,7 +357,6 @@ const speak = (text, lang = 'zh-CN') => {
 };
 
 const playTaskAudio = (text, audioUrl) => {
-  // 优先使用 TTS，确保发音一致性
   speak(text, 'en-US'); 
 };
 
@@ -392,7 +395,7 @@ const LoginScreen = ({ onLogin }) => {
       <div className="relative z-10 w-full max-w-sm bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
         <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V23.0</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V24.0 (Anki导入)</p>
         {SERVER_IP && (<div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between"><span className="flex gap-2"><Server size={14}/> {SERVER_IP}</span><button onClick={()=>setUseDirect(!useDirect)} className={`text-[10px] px-1 rounded ${useDirect?'bg-red-500 text-white':'text-slate-500'}`}>{useDirect ? '强制直连' : '代理模式'}</button></div>)}
         <form onSubmit={handleSubmit} className="space-y-4"><div className="relative"><User className="absolute left-3 top-3.5 text-slate-400" size={20} /><input type="text" className="w-full bg-slate-900/50 border border-slate-600 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-400" placeholder="特工代号" value={username} onChange={e => setUsername(e.target.value)} /></div><button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2">{loading ? <Loader2 className="animate-spin"/> : "连接基地"}</button></form>
         {errorMsg && <div className="mt-4 p-3 bg-red-900/50 border border-red-500/50 rounded-xl text-red-200 text-xs flex items-start gap-2"><AlertTriangle size={16} className="shrink-0 mt-0.5" /><span>{errorMsg}</span></div>}
@@ -467,7 +470,6 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
                 {taskImage ? <img src={taskImage} className="w-full h-full object-cover transform transition-transform group-hover:scale-110" onLoad={() => setImgLoaded(true)} onError={(e)=>{e.target.style.display='none'; setImgLoaded(true);}} /> : <div className="text-6xl animate-bounce">{isEnglish?"A":"⚔️"}</div>}
             </div>
             
-            {/* 🔊 弹窗内的发音按钮 */}
             {isEnglish && (
                 <button onClick={() => speak(task.flashcardData.word, 'en-US')} className="absolute top-16 right-6 bg-white p-2 rounded-full shadow-md text-blue-600 hover:scale-110 transition-transform">
                     <Volume2 size={24} />
@@ -584,7 +586,8 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const [activeTab, setActiveTab] = useState('library'); 
     const [saveStatus, setSaveStatus] = useState(''); 
     const [editingItem, setEditingItem] = useState(null); 
-    
+    const [importInputRef] = useState(useRef(null)); // Ref for file input
+
     // Config states
     const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
     const [pushEnd, setPushEnd] = useState(userProfile.pushEndHour || 21);
@@ -701,13 +704,46 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
         setLevelStages(newStages);
     };
     
-    // 选择预置词汇
-    const selectPreset = (key) => {
-        const item = SYSTEM_DICTIONARY[key];
-        setFlashcardWord(key);
-        setFlashcardTrans(item.cn);
-        setFlashcardImg(item.img); 
-        setNewTaskType('english');
+    // CSV Import Logic
+    const handleImportCSV = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const text = ev.target.result;
+            const lines = text.split(/\r?\n/);
+            let count = 0;
+            
+            lines.forEach(line => {
+                const parts = line.split(/[,;\t]/).map(p => p.trim()).filter(p => p);
+                if (parts.length > 0) {
+                    const word = parts[0];
+                    const translation = parts.length > 1 ? parts[1] : '';
+                    
+                    // Simple validation: ignore if it looks like a header or empty
+                    if (word && word.length > 1 && word.toLowerCase() !== 'word') {
+                        const enrichedData = enrichWordTask(word);
+                        // If CSV provides translation, override system one
+                        if (translation) enrichedData.translation = translation;
+                        
+                        onManageLibrary('add', { 
+                            title: `练习单词: ${enrichedData.word}`, 
+                            type: 'english', 
+                            reward: 20, 
+                            flashcardData: enrichedData, 
+                            memoryLevel: 0, 
+                            nextReview: Date.now(), 
+                            cycleMode: 'ebbinghaus' 
+                        });
+                        count++;
+                    }
+                }
+            });
+            alert(`成功导入 ${count} 个单词！`);
+            refresh();
+            e.target.value = ''; // Reset input
+        };
+        reader.readAsText(file);
     };
 
     const constructTaskData = () => ({
@@ -771,21 +807,20 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
       </div>}
 
       {activeTab==='library' && <div className="space-y-6">
-         {/* 精选词库推荐 */}
-         <div className="bg-white p-4 rounded-xl shadow-sm border border-orange-100">
-             <h3 className="font-bold mb-2 flex items-center gap-2 text-orange-800"><Book size={16}/> 推荐词库 (高清图+发音)</h3>
-             <div className="flex gap-2 overflow-x-auto pb-2">
-                 {Object.keys(SYSTEM_DICTIONARY).map(k => (
-                     <button key={k} onClick={() => selectPreset(k)} className="flex flex-col items-center shrink-0 border p-2 rounded hover:bg-orange-50 w-20">
-                         <img src={SYSTEM_DICTIONARY[k].img} className="w-16 h-16 object-cover rounded mb-1 bg-slate-100"/>
-                         <span className="text-xs truncate w-full text-center font-bold">{k}</span>
-                         <span className="text-[10px] text-slate-400">{SYSTEM_DICTIONARY[k].cn}</span>
-                     </button>
-                 ))}
+         
+         <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100">
+             <div className="flex justify-between items-center mb-2">
+                <h3 className="font-bold flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3>
+                {/* 📂 CSV 导入按钮 */}
+                <button onClick={()=>importInputRef.current.click()} className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-200 flex items-center gap-1">
+                    <FileText size={12}/> 导入 Anki/CSV
+                </button>
+                <input type="file" ref={importInputRef} className="hidden" accept=".csv,.txt" onChange={handleImportCSV}/>
              </div>
+             <textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词，逗号分隔 (如: apple, banana)"/>
+             <button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成</button>
          </div>
-      
-         <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><h3 className="font-bold mb-2 flex items-center gap-2 text-blue-800"><Wand2 size={16}/> 智能批量添加</h3><textarea className="w-full border p-2 rounded mb-2 text-sm" value={batchWords} onChange={e=>setBatchWords(e.target.value)} placeholder="输入单词，逗号分隔 (如: apple, banana)"/><button onClick={handleBatchAddWords} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">一键生成</button></div>
+
          <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-slate-300">
            <h3 className="font-bold mb-4">手动添加任务</h3>
            <div className="flex gap-2 mb-3"><button onClick={()=>setNewTaskType('generic')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='generic'?'bg-slate-200 border-slate-400':''}`}>通用任务</button><button onClick={()=>setNewTaskType('english')} className={`flex-1 py-2 border rounded-lg text-sm font-bold ${newTaskType==='english'?'bg-purple-100 border-purple-400 text-purple-700':''}`}>英语任务</button></div>
