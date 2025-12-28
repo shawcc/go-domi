@@ -241,9 +241,7 @@ const CloudAPI = {
 const PUZZLE_CONFIG = { totalPieces: 9, image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80" };
 
 // 🌟 海量预置词库 + 智能图片生成器
-// 使用固定 Seed 保证同一单词每次图片一致，且缓存友好
 const getImgUrl = (keyword) => {
-    // 简单的字符串哈希，用于生成固定的随机种子
     let hash = 0;
     for (let i = 0; i < keyword.length; i++) {
         hash = keyword.charCodeAt(i) + ((hash << 5) - hash);
@@ -262,7 +260,7 @@ const SYSTEM_DICTIONARY = {
   // Transport
   'car': '汽车', 'cars': '汽车', 'bus': '公交车', 'jet': '喷气机', 'van': '货车', 'boat': '船', 'robot': '机器人', 'robots': '机器人', 'kite': '风筝', 'tractor': '拖拉机',
   // Food
-  'apple': '苹果', 'watermelons': '西瓜', 'oranges': '橙子', 'kiwis': '猕猴桃', 'peaches': '桃子', 'strawberries': '草莓', 'strawberry': '草莓', 'mango': '芒果', 'carrots': '胡萝卜', 'cucumbers': '黄瓜', 'potatoes': '土豆', 'tomatoes': '西红柿', 'pumpkins': '南瓜', 'pumpkin seeds': '南瓜子', 'peanuts': '花生', 'corn': '玉米', 'wheat': '小麦', 'cotton': '棉花', 'nuts': '坚果', 'chicken': '鸡肉', 'beef': '牛肉', 'ham': '火腿', 'bread': '面包', 'milk': '牛奶', 'yoghurt': '酸奶', 'eggs': '鸡蛋', 'vanilla': '香草', 'chocolate': '巧克力', 'doughnuts': '甜甜圈', 'ice lollies': '冰棍', 'jelly': '果冻', 'cake': '蛋糕', 'cookies': '曲奇饼', 'popcorn': '爆米花', 'pizza': '披萨', 'hot dog': '热狗', 'hamburger': '汉堡包', 'spaghetti': '意大利面', 'cotton candy': '棉花糖', 'ice cream': '冰淇淋', 'pineapple jam': '菠萝酱', 'cherry jam': '樱桃酱', 'blueberry jam': '蓝莓酱', 'strawberry jam': '草莓酱', 'candies': '糖果', 'chips': '薯片', 'Dairy': '乳制品', 'Fruits': '水果', 'Vegetables': '蔬菜', 'Grains': '谷物', 'Meat': '肉类',
+  'apple': '苹果', 'watermelons': '西瓜', 'oranges': '橙子', 'kiwis': '猕猴桃', 'peaches': '桃子', 'strawberries': '草莓', 'strawberry': '草莓', 'mango': '芒果', 'carrots': '胡萝卜', 'cucumbers': '黄瓜', 'potatoes': '土豆', 'tomatoes': '西红柿', 'pumpkins': '南瓜', 'pumpkin seeds': '南瓜子', 'peanuts': '花生', 'corn': '玉米', 'wheat': '小麦', 'cotton': '棉花', 'nuts': '坚果', 'beef': '牛肉', 'ham': '火腿', 'bread': '面包', 'milk': '牛奶', 'yoghurt': '酸奶', 'eggs': '鸡蛋', 'vanilla': '香草', 'chocolate': '巧克力', 'doughnuts': '甜甜圈', 'ice lollies': '冰棍', 'jelly': '果冻', 'cake': '蛋糕', 'cookies': '曲奇饼', 'popcorn': '爆米花', 'pizza': '披萨', 'hot dog': '热狗', 'hamburger': '汉堡包', 'spaghetti': '意大利面', 'cotton candy': '棉花糖', 'ice cream': '冰淇淋', 'pineapple jam': '菠萝酱', 'cherry jam': '樱桃酱', 'blueberry jam': '蓝莓酱', 'strawberry jam': '草莓酱', 'candies': '糖果', 'chips': '薯片', 'Dairy': '乳制品', 'Fruits': '水果', 'Vegetables': '蔬菜', 'Grains': '谷物', 'Meat': '肉类',
   // Nature/Objects
   'castle': '城堡', 'bridge': '桥', 'wall': '墙', 'rainbow': '彩虹', 'stars': '星星', 'sun': '太阳', 'moon': '月亮', 'tree': '树', 'grass': '草', 'flower': '花', 'flowers': '花朵', 'petals': '花瓣', 'leaves': '叶子', 'leaf': '叶子', 'stem': '茎', 'roots': '根', 'sunflowers': '向日葵', 'roses': '玫瑰', 'lilies': '百合', 'vine': '藤蔓', 'nest': '鸟巢', 'barn': '谷仓', 'windmill': '风车', 'coral reef': '珊瑚礁', 'seashell': '贝壳', 'pebble': '鹅卵石', 'sand': '沙子', 'sandcastle': '沙堡', 'pyramid': '金字塔', 'ink': '墨水', 'trash': '垃圾', 'trash bin': '垃圾桶', 'teddy': '泰迪熊', 'pillow': '枕头', 'quilt': '被子', 'umbrella': '雨伞', 'shoes': '鞋子', 'wig': '假发', 'bow tie': '领结', 'shovel': '铲子', 'rake': '耙子', 'bucket': '水桶', 'watering can': '洒水壶',
   // People/Roles
@@ -610,9 +608,23 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const handleUpload = async (e, type, idx) => {
        const file = e.target.files[0];
        if(!file) return;
+       
+       // 1. 本地即时预览 (Local Preview)
+       const localPreview = URL.createObjectURL(file);
+       if (type === 'mascot') setThemeMascot(localPreview);
+       else if (type === 'bg') setThemeBg(localPreview);
+       else if (type === 'stage' && idx !== undefined) {
+           const newStages = [...levelStages];
+           newStages[idx].image = localPreview;
+           setLevelStages(newStages);
+       }
+       
        setUploading(true);
        try {
+         // 2. 后端上传
          const url = await CloudAPI.upload(file);
+         
+         // 3. 替换为真实 URL
          if (type === 'mascot') setThemeMascot(url);
          else if (type === 'bg') setThemeBg(url);
          else if (type === 'stage' && idx !== undefined) {
@@ -664,7 +676,7 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
         const item = SYSTEM_DICTIONARY[key];
         setFlashcardWord(key);
         setFlashcardTrans(item.cn);
-        setFlashcardImg(item.img);
+        setFlashcardImg(item.img); // 填入预置的高清图 URL
         setNewTaskType('english');
     };
 
@@ -735,9 +747,10 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
              <h3 className="font-bold mb-2 flex items-center gap-2 text-orange-800"><Book size={16}/> 推荐词库 (高清图+发音)</h3>
              <div className="flex gap-2 overflow-x-auto pb-2">
                  {Object.keys(SYSTEM_DICTIONARY).map(k => (
-                     <button key={k} onClick={() => selectPreset(k)} className="flex flex-col items-center shrink-0 border p-2 rounded hover:bg-orange-50">
-                         <img src={SYSTEM_DICTIONARY[k].img} className="w-10 h-10 object-cover rounded mb-1"/>
-                         <span className="text-xs">{k}</span>
+                     <button key={k} onClick={() => selectPreset(k)} className="flex flex-col items-center shrink-0 border p-2 rounded hover:bg-orange-50 w-20">
+                         <img src={SYSTEM_DICTIONARY[k].img} className="w-16 h-16 object-cover rounded mb-1 bg-slate-100"/>
+                         <span className="text-xs truncate w-full text-center font-bold">{k}</span>
+                         <span className="text-[10px] text-slate-400">{SYSTEM_DICTIONARY[k].cn}</span>
                      </button>
                  ))}
              </div>
@@ -975,6 +988,7 @@ export default function App() {
        const libItem = newData.library.find(i => i.id === task.libraryId);
        if (libItem) {
           const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+          // 保持原定小时，若无则默认 19 点
           const originalHour = libItem.nextReview ? new Date(libItem.nextReview).getHours() : 19;
           tomorrow.setHours(originalHour, 0, 0, 0);
           libItem.nextReview = tomorrow.getTime();
