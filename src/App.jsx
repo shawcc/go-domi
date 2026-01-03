@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-// 🛡️ 核心修复：补全所有 JSX 中用到的图标，防止 Undefined 报错
+// 🛡️ 核心修复：只导入绝对安全的图标
 import { 
   Rocket, User, X, Zap, Loader2, 
   Star, Siren, Trash2, Radar, Headphones, 
   Wand2, Puzzle, BookOpen, Sliders, LogOut, Cloud, RefreshCw, 
   Palette, Upload, Server, AlertTriangle, Bell, Settings,
-  Plus, Minus, Book, Volume2, Trophy, Check
+  Plus, Minus, Book, Volume2, Trophy, Check, Music
 } from 'lucide-react';
 
 // ==========================================
@@ -96,7 +96,7 @@ class ErrorBoundary extends React.Component {
 // ==========================================
 // --- 2. 数据引擎 ---
 // ==========================================
-const STORAGE_KEY = 'go_domi_data_v24_mega_library'; 
+const STORAGE_KEY = 'go_domi_data_v25_audio_fix'; 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
 const CRYSTAL_STAGES = [
@@ -197,21 +197,14 @@ const PUZZLE_CONFIG = { totalPieces: 9, image: "https://images.unsplash.com/phot
 const SYSTEM_DICTIONARY = {
   'cat': { cn: '猫', img: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&q=80' },
   'dog': { cn: '狗', img: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&q=80' },
-  'elephant': { cn: '大象', img: 'https://images.unsplash.com/photo-1557050543-4d5f490d49cd?w=400&q=80' },
-  'lion': { cn: '狮子', img: 'https://images.unsplash.com/photo-1546182990-dced71b4827f?w=400&q=80' },
-  'bird': { cn: '鸟', img: 'https://images.unsplash.com/photo-1444464666168-49d633b86797?w=400&q=80' },
-  'fish': { cn: '鱼', img: 'https://images.unsplash.com/photo-1524704654690-b56c05c78a00?w=400&q=80' },
   'apple': { cn: '苹果', img: 'https://images.unsplash.com/photo-1570913149827-d2ac84ab3f9a?w=400&q=80' },
   'banana': { cn: '香蕉', img: 'https://images.unsplash.com/photo-1571771896338-a3d481609fcd?w=400&q=80' },
   'orange': { cn: '橙子', img: 'https://images.unsplash.com/photo-1582979512210-99b6a5338509?w=400&q=80' },
-  'ice cream': { cn: '冰淇淋', img: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=400&q=80' },
   'flower': { cn: '花', img: 'https://images.unsplash.com/photo-1560717789-0ac7c58ac90a?w=400&q=80' },
   'tree': { cn: '树', img: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=400&q=80' },
   'car': { cn: '汽车', img: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=400&q=80' },
   'bus': { cn: '公交车', img: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=400&q=80' },
   'airplane': { cn: '飞机', img: 'https://images.unsplash.com/photo-1559087867-ce4c91325525?w=400&q=80' },
-  'head': { cn: '头', img: 'https://images.unsplash.com/photo-1531123414780-f74242c2b052?w=400&q=80' },
-  'hand': { cn: '手', img: 'https://images.unsplash.com/photo-1466695108335-44674aa2058b?w=400&q=80' },
 };
 
 const getImgUrl = (keyword) => {
@@ -296,8 +289,22 @@ const speak = (text, lang = 'zh-CN') => {
   window.speechSynthesis.speak(u);
 };
 
+// 🔊 增强版播放：支持播放上传的音频，回退到 TTS
 const playTaskAudio = (text, audioUrl) => {
-  speak(text, 'en-US'); 
+  if (audioUrl) {
+    const safeUrl = proxifyUrl(audioUrl);
+    const audio = new Audio(safeUrl);
+    const playPromise = audio.play();
+    
+    if (playPromise !== undefined) {
+        playPromise.catch(error => {
+            console.warn("Audio file play failed, fallback to TTS", error);
+            speak(text, 'en-US'); // 如果文件播放失败，使用 TTS 兜底
+        });
+    }
+  } else {
+    speak(text, 'en-US'); 
+  }
 };
 
 const playSystemSound = (type) => {
@@ -333,90 +340,14 @@ const LoginScreen = ({ onLogin }) => {
   return (
     <div className="fixed inset-0 w-screen h-screen bg-slate-900 flex flex-col landscape:flex-row items-center justify-center text-white p-6 z-[200]">
       <div className="relative z-10 w-full max-w-sm bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-2xl">
-        <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Rocket size={40} className="text-white" /></div></div>
+        <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 animate-bounce"><Star size={40} className="text-white" /></div></div>
         <h1 className="text-2xl font-black text-center mb-2">多米宇宙基地</h1>
-        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V24.4 (Stable)</p>
+        <p className="text-slate-400 text-center text-sm mb-8">云端同步版 V25.0 (Audio+)</p>
         {SERVER_IP && (<div className="mb-4 text-xs bg-blue-900/40 text-blue-200 p-2 rounded border border-blue-500/30 flex items-center justify-between"><span className="flex gap-2"><Server size={14}/> {SERVER_IP}</span><button onClick={()=>setUseDirect(!useDirect)} className={`text-[10px] px-1 rounded ${useDirect?'bg-red-500 text-white':'text-slate-500'}`}>{useDirect ? '强制直连' : '代理模式'}</button></div>)}
         <form onSubmit={handleSubmit} className="space-y-4"><div className="relative"><User className="absolute left-3 top-3.5 text-slate-400" size={20} /><input type="text" className="w-full bg-slate-900/50 border border-slate-600 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-400" placeholder="特工代号" value={username} onChange={e => setUsername(e.target.value)} /></div><button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2">{loading ? <RefreshCw className="animate-spin"/> : "连接基地"}</button></form>
         {errorMsg && <div className="mt-4 p-3 bg-red-900/50 border border-red-500/50 rounded-xl text-red-200 text-xs flex items-start gap-2"><AlertTriangle size={16} className="shrink-0 mt-0.5" /><span>{errorMsg}</span></div>}
         <div className="mt-6 text-center text-xs text-slate-500"><button onClick={LocalDB.export} className="text-blue-400 hover:underline">导出本地数据备份</button></div>
       </div>
-    </div>
-  );
-};
-
-const TTSDebugger = ({ onClose }) => {
-  const [voices, setVoices] = useState([]);
-  const [text, setText] = useState('Hello, little explorer!');
-  const [log, setLog] = useState([]);
-  const [selectedVoice, setSelectedVoice] = useState('');
-
-  useEffect(() => {
-    const updateVoices = () => {
-      const vs = window.speechSynthesis.getVoices();
-      setVoices(vs);
-      if (vs.length > 0 && !selectedVoice) {
-         const defaultVoice = vs.find(v => v.name.includes('Google US')) || vs.find(v => v.lang.includes('en-US')) || vs[0];
-         setSelectedVoice(defaultVoice.name);
-      }
-    };
-    updateVoices();
-    window.speechSynthesis.onvoiceschanged = updateVoices;
-  }, []);
-
-  const addLog = (msg) => setLog(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
-
-  const handleSpeak = () => {
-    if (!window.speechSynthesis) {
-        addLog("Fatal: Browser does not support speech synthesis");
-        return;
-    }
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    const voice = voices.find(v => v.name === selectedVoice);
-    if (voice) {
-        u.voice = voice;
-        u.lang = voice.lang;
-    }
-    u.rate = 0.8;
-    
-    u.onstart = () => addLog("Event: Started speaking");
-    u.onend = () => addLog("Event: Finished speaking");
-    u.onerror = (e) => addLog(`Event: Error - ${e.error}`);
-    
-    window.speechSynthesis.speak(u);
-    addLog(`Command: Speak "${text}" using ${voice ? voice.name : 'default'}`);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
-        <div className="bg-white w-full max-w-md rounded-xl p-4 shadow-xl flex flex-col max-h-[80vh]">
-            <div className="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 className="font-bold flex items-center gap-2"><Zap size={20}/> TTS 调试器</h3>
-                <button onClick={onClose}><X size={20}/></button>
-            </div>
-            
-            <div className="space-y-3 overflow-y-auto flex-1">
-                <div className="bg-blue-50 p-2 rounded text-xs text-blue-700 mb-2">
-                    如果没声音：1. 检查手机静音键 2. 确保选择了包含 "US" 或 "English" 的语音 3. 尝试其他语音包
-                </div>
-                <div>
-                    <label className="text-xs font-bold block mb-1">选择语音 ({voices.length})</label>
-                    <select className="w-full border p-2 rounded text-xs" value={selectedVoice} onChange={e=>setSelectedVoice(e.target.value)}>
-                        {voices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="text-xs font-bold block mb-1">测试文本</label>
-                    <input className="w-full border p-2 rounded" value={text} onChange={e=>setText(e.target.value)} />
-                </div>
-                <button onClick={handleSpeak} className="w-full bg-blue-600 text-white py-2 rounded font-bold">播放测试</button>
-                
-                <div className="bg-slate-900 text-green-400 p-2 rounded h-40 overflow-y-auto text-xs font-mono">
-                    {log.length === 0 ? <span className="opacity-50">等待操作...</span> : log.map((l, i) => <div key={i}>{l}</div>)}
-                </div>
-            </div>
-        </div>
     </div>
   );
 };
@@ -487,7 +418,7 @@ const TaskPopup = ({ tasks, currentTheme, onCompleteTask, onPlayFlashcard, proce
             </div>
             
             {isEnglish && (
-                <button onClick={() => speak(task.flashcardData.word, 'en-US')} className="absolute top-16 right-6 bg-white p-2 rounded-full shadow-md text-blue-600 hover:scale-110 transition-transform">
+                <button onClick={() => playTaskAudio(task.flashcardData.word, task.flashcardData.audio)} className="absolute top-16 right-6 bg-white p-2 rounded-full shadow-md text-blue-600 hover:scale-110 transition-transform">
                     <Volume2 size={24} />
                 </button>
             )}
@@ -548,6 +479,9 @@ const LibraryItemEditor = ({ item, onSave, onCancel }) => {
     const [word, setWord] = useState(item.flashcardData?.word || '');
     const [trans, setTrans] = useState(item.flashcardData?.translation || '');
     const [imgUrl, setImgUrl] = useState(item.image || item.flashcardData?.image || '');
+    // 🎵 3. 音频编辑框：支持 URL 输入
+    const [audioUrl, setAudioUrl] = useState(item.flashcardData?.audio || '');
+    
     const previewUrl = proxifyUrl(imgUrl);
     
     const handleSave = () => {
@@ -555,9 +489,19 @@ const LibraryItemEditor = ({ item, onSave, onCancel }) => {
             ...item,
             title: word ? `练习单词: ${word}` : title,
             image: !word ? imgUrl : undefined,
-            flashcardData: word ? { ...item.flashcardData, word, translation: trans, image: imgUrl } : null
+            flashcardData: word ? { ...item.flashcardData, word, translation: trans, image: imgUrl, audio: audioUrl } : null
         };
         onSave(updatedItem);
+    };
+
+    const handleUploadAudio = async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        try {
+            const url = await CloudAPI.upload(file);
+            setAudioUrl(url);
+            alert("音频上传成功");
+        } catch(e) { alert("上传失败"); }
     };
 
     return (
@@ -579,12 +523,26 @@ const LibraryItemEditor = ({ item, onSave, onCancel }) => {
                         </div>
                     </div>
                     {word && <input className="w-full border p-2 rounded text-sm" value={trans} onChange={e=>setTrans(e.target.value)} placeholder="中文释义" />}
+                    
                     <div>
                         <label className="text-xs text-slate-500 block mb-1">图片链接 (URL)</label>
                         <input className="w-full border p-2 rounded text-xs font-mono" value={imgUrl} onChange={e=>setImgUrl(e.target.value)} placeholder="粘贴图片地址..." />
                     </div>
+                    
+                    {/* 音频配置区域 */}
+                    <div>
+                         <label className="text-xs text-slate-500 block mb-1">发音配置 (选填)</label>
+                         <div className="flex gap-2">
+                             <input className="flex-1 border p-2 rounded text-xs font-mono" value={audioUrl} onChange={e=>setAudioUrl(e.target.value)} placeholder="/uploads/xxx.mp3 或 http://..." />
+                             <label className="bg-slate-100 p-2 rounded cursor-pointer hover:bg-slate-200">
+                                 <Upload size={14}/>
+                                 <input type="file" className="hidden" accept="audio/*" onChange={handleUploadAudio}/>
+                             </label>
+                         </div>
+                    </div>
+
                     <div className="flex gap-2 pt-2">
-                        {word && <button onClick={()=>speak(word, 'en-US')} className="flex-1 bg-blue-100 text-blue-700 py-2 rounded font-bold text-sm flex items-center justify-center gap-1"><Volume2 size={14}/> 试听发音</button>}
+                        {word && <button onClick={()=>playTaskAudio(word, audioUrl)} className="flex-1 bg-blue-100 text-blue-700 py-2 rounded font-bold text-sm flex items-center justify-center gap-1"><Volume2 size={14}/> 试听</button>}
                         <button onClick={handleSave} className="flex-1 bg-green-600 text-white py-2 rounded font-bold text-sm">保存修改</button>
                     </div>
                 </div>
@@ -598,7 +556,6 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
     const [saveStatus, setSaveStatus] = useState(''); 
     const [editingItem, setEditingItem] = useState(null); 
     const [importInputRef] = useState(useRef(null)); 
-    const [showDebug, setShowDebug] = useState(false); 
 
     // Config states
     const [pushStart, setPushStart] = useState(userProfile.pushStartHour || 19);
@@ -781,9 +738,6 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
       {/* ✏️ 任务库编辑弹窗 */}
       {editingItem && <LibraryItemEditor item={editingItem} onCancel={()=>setEditingItem(null)} onSave={(updated)=>{onManageLibrary('update', updated); setEditingItem(null); refresh();}} />}
       
-      {/* 🛠️ TTS 调试器 */}
-      {showDebug && <TTSDebugger onClose={()=>setShowDebug(false)} />}
-
       {activeTab==='plan' && <div className="bg-white p-4 rounded shadow">
          <h3 className="font-bold mb-2">任务队列 ({sortedLibrary.length})</h3>
          {sortedLibrary.length===0?<p className="text-slate-400 text-sm">无任务</p>:sortedLibrary.map(i=>{
@@ -885,10 +839,6 @@ const ParentDashboard = ({ userProfile, tasks, libraryItems, onAddTask, onClose,
             <button onClick={onForceSync} className="text-blue-600 text-xs flex gap-1"><Cloud size={14}/> 强制覆盖云端数据</button>
             <button onClick={handleLogout} className="text-red-500 text-xs">退出</button>
         </div>
-        {/* 调试入口 */}
-        <div className="text-center pt-2">
-             <button onClick={()=>setShowDebug(true)} className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1 mx-auto"><Settings size={10}/> TTS 语音调试</button>
-        </div>
       </div>}
       
       {activeTab==='monitor' && <div className="bg-white p-4 rounded"><h3 className="font-bold mb-4">进行中任务 ({pendingTasks.length})</h3>{pendingTasks.length === 0 ? <p className="text-slate-400">孩子当前空闲</p> : pendingTasks.map(t=><div key={t.id} className="p-3 border-b flex justify-between items-center"><span className="text-sm font-bold">{t.title}</span><div className="flex gap-2"><button onClick={onNudgeKid} className="text-blue-500 text-xs border border-blue-200 px-2 py-1 rounded flex items-center gap-1"><Bell size={12}/> 提醒</button><button onClick={()=>onDeleteTask(t.id)} className="text-red-500 text-xs border border-red-200 px-2 py-1 rounded">撤回</button></div></div>)}</div>}
@@ -904,20 +854,8 @@ const FlashcardGame = ({ task, onClose, onComplete }) => {
     const imageUrl = proxifyUrl(task.flashcardData?.image);
     useEffect(() => { if(step==='learning') setTimeout(()=>playTaskAudio(word, task.flashcardData?.audio), 500); }, [step]);
     const checkMath = () => { if(parseInt(mathAns)===mathQ.a*mathQ.b){ setStep('success'); speak("太棒了！"); setTimeout(()=>onComplete(task),2000); } else alert("算错啦"); };
-    
-    // 生成乘法题
-    const generateMath = () => {
-      const a = Math.floor(Math.random() * 7) + 3; 
-      const b = Math.floor(Math.random() * 7) + 3;
-      setMathQ({ a, b });
-      setMathAns('');
-    };
-
-    const handleGoTeach = () => {
-       setStep('challenge');
-       generateMath();
-    };
-
+    const generateMath = () => { const a = Math.floor(Math.random() * 7) + 3; const b = Math.floor(Math.random() * 7) + 3; setMathQ({ a, b }); setMathAns(''); };
+    const handleGoTeach = () => { setStep('challenge'); generateMath(); };
     return (
         <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4">
         <div className="bg-white text-slate-900 w-full max-w-md landscape:max-w-4xl rounded-3xl overflow-hidden shadow-2xl relative flex flex-col landscape:flex-row max-h-[90vh]">
